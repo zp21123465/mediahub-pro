@@ -40,11 +40,9 @@
 创建 `docker-compose.yml`：
 
 ```yaml
-version: '3.8'
-
 services:
   mediahub-pro:
-    image: ghcr.io/zp21123465/ghcr.io/zp21123465/mediahub-pro:latest
+    image: ghcr.io/zp21123465/mediahub-pro:latest
     container_name: mediahub-pro
     restart: unless-stopped
     ports:
@@ -90,7 +88,7 @@ docker run -d \
    * **CMS (Cloud-Media-Sync)**：如 `http://192.168.1.100:9527`
    * **PanSou-Web**：如 `http://192.168.1.100:18933`
    * **Media Saber (可选)**：如 `http://192.168.1.100:18512`
-   * **TMDB API Key**：您的 TMDB 开发者密钥（用于高清海报匹配）
+   * **TMDB API Key**：您的 TMDB 开发者密钥（用于高清海报匹配，留空支持自动公共引擎）
 4. 点击【保存设置并连通测试】，绿灯亮起即可开启全自动影院中枢体验！
 
 ---

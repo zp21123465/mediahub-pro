@@ -1,5 +1,9 @@
 FROM python:3.11-alpine
 
+LABEL org.opencontainers.image.source="https://github.com/zp21123465/mediahub-pro"
+LABEL org.opencontainers.image.description="All-in-one automated private cinema hub"
+LABEL org.opencontainers.image.licenses="MIT"
+
 WORKDIR /app
 
 RUN apk add --no-cache tzdata gcc musl-dev libffi-dev

@@ -1236,7 +1236,7 @@ def qb_clean_unwanted_episodes(series_title: str, allowed_eps: list[int]):
         # 轮询 15 秒等待种子进入 QB
         for _ in range(5):
             time.sleep(3)
-            r_torrents = s.get("http://192.168.32.8:8091/api/v2/torrents/info", timeout=4)
+            r_torrents = s.get("http://127.0.0.1:8080/api/v2/torrents/info", timeout=4)
             if r_torrents.status_code != 200: continue
             
             target_hash = None
@@ -1247,7 +1247,7 @@ def qb_clean_unwanted_episodes(series_title: str, allowed_eps: list[int]):
                     break
                     
             if target_hash:
-                r_files = s.get(f"http://192.168.32.8:8091/api/v2/torrents/files?hash={target_hash}", timeout=4)
+                r_files = s.get(f"http://127.0.0.1:8080/api/v2/torrents/files?hash={target_hash}", timeout=4)
                 if r_files.status_code == 200:
                     files = r_files.json()
                     unwanted_ids = []
@@ -1261,7 +1261,7 @@ def qb_clean_unwanted_episodes(series_title: str, allowed_eps: list[int]):
                                 unwanted_ids.append(str(idx))
                                 
                     if unwanted_ids:
-                        s.post("http://192.168.32.8:8091/api/v2/torrents/filePrio", data={
+                        s.post("http://127.0.0.1:8080/api/v2/torrents/filePrio", data={
                             "hash": target_hash,
                             "id": "|".join(unwanted_ids),
                             "priority": 0

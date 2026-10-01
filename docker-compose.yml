@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   mediahub-pro:
-    image: mediahub-pro:latest
+    image: ghcr.io/zp21123465/mediahub-pro:latest
     container_name: mediahub-pro
     restart: unless-stopped
     ports:

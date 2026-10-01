@@ -44,7 +44,7 @@ version: '3.8'
 
 services:
   mediahub-pro:
-    image: mediahub-pro:latest  # 或您的 Docker Hub 镜像名
+    image: ghcr.io/zp21123465/ghcr.io/zp21123465/mediahub-pro:latest
     container_name: mediahub-pro
     restart: unless-stopped
     ports:
@@ -76,7 +76,7 @@ docker run -d \
   -v /volume1/影视strm/115strm:/115strm \
   -v /volume1/docker/cms/config:/app/cms_config:ro \
   -e TZ=Asia/Shanghai \
-  mediahub-pro:latest
+  ghcr.io/zp21123465/mediahub-pro:latest
 ```
 
 ---

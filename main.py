@@ -1229,8 +1229,7 @@ def qb_clean_unwanted_episodes(series_title: str, allowed_eps: list[int]):
     if not allowed_eps: return
     try:
         s = requests.Session()
-        r_login = # downloader status probe
-        pass
+        r_login = None
         if r_login.status_code != 200 or "Ok." not in r_login.text: return
         
         # 轮询 15 秒等待种子进入 QB

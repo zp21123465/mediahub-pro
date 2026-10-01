@@ -904,6 +904,18 @@
         </div>
       </div>
 
+            <!-- TMDB -->
+      <div class="glass-card service-card">
+        <div class="service-header">
+          <div style="font-weight: 700; font-size: 1rem;">🎬 TheMovieDb (TMDB 高清海报与元数据)</div>
+          <button class="btn btn-secondary btn-sm" onclick="testService('tmdb')">深度测试</button>
+        </div>
+        <div class="input-group">
+          <label class="input-label">TMDB API Key (官方开发者密钥，留空支持智能自动兜底)</label>
+          <input type="text" id="cfg-tmdb-key" class="input-control" placeholder="输入 32 位 TMDB API 密钥，留空将自动启用公共引擎">
+        </div>
+      </div>
+
       <button class="btn" style="width: 100%; padding: 12px; margin-top: 8px;" onclick="saveAllConfig()">
         💾 保存全部外部服务设置
       </button>
@@ -2193,6 +2205,9 @@ async function triggerFillAllGaps() {
       } else if (stype === 'media_saber') {
         payload.url = document.getElementById('cfg-ms-url').value;
         payload.token = document.getElementById('cfg-ms-token').value;
+      } else if (stype === 'tmdb') {
+        payload.url = 'https://api.themoviedb.org';
+        payload.api_key = document.getElementById('cfg-tmdb-key').value;
       }
 
       showToast(`正在对 ${stype} 发起深度业务握手测试...`, 'info');
@@ -2215,7 +2230,8 @@ async function triggerFillAllGaps() {
         emby: { url: document.getElementById('cfg-emby-url').value, api_key: document.getElementById('cfg-emby-key').value },
         cms: { url: document.getElementById('cfg-cms-url').value },
         pansou: { url: document.getElementById('cfg-pansou-url').value },
-        media_saber: { url: document.getElementById('cfg-ms-url').value, token: document.getElementById('cfg-ms-token').value }
+        media_saber: { url: document.getElementById('cfg-ms-url').value, token: document.getElementById('cfg-ms-token').value },
+        tmdb: { api_key: document.getElementById('cfg-tmdb-key').value }
       };
       try {
         const res = await fetch('/api/config', {
@@ -2394,6 +2410,9 @@ async function triggerFillAllGaps() {
           if (cfg.media_saber) {
             if (cfg.media_saber.url) document.getElementById('cfg-ms-url').value = cfg.media_saber.url;
             if (cfg.media_saber.token) document.getElementById('cfg-ms-token').value = cfg.media_saber.token;
+          }
+          if (cfg.tmdb && cfg.tmdb.api_key) {
+            document.getElementById('cfg-tmdb-key').value = cfg.tmdb.api_key;
           }
         }
       } catch(e) {

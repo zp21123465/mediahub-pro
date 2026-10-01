@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  mediahub-pro:
+    image: mediahub-pro:latest
+    container_name: mediahub-pro
+    restart: unless-stopped
+    ports:
+      - "18888:18888"
+    volumes:
+      # 持久化存储数据 (系统配置、任务日志等)
+      - ./data:/app/data
+      # 挂载您的 STRM 媒体目录 (用于本地坏种探活与自愈，请按需修改宿主机真实路径)
+      # - /volume1/影视strm/115strm:/115strm
+      # 挂载 CMS 的配置目录 (只读，用于直读 cms-online.db 映射 115 云端文件)
+      # - /volume1/docker/cms/config:/app/cms_config:ro
+    environment:
+      - TZ=Asia/Shanghai
+      # 可选环境变量 (也可在容器启动后直接通过 Web 管理面板填入):
+      # - EMBY_URL=http://192.168.1.100:8096
+      # - EMBY_API_KEY=your_emby_api_key
+      # - CMS_URL=http://192.168.1.100:9527
+      # - TMDB_API_KEY=your_tmdb_api_key
+      # - SECRET_KEY=your_custom_secret_key

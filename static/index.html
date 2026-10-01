@@ -1,0 +1,2411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediaHub Pro - 私有影院一体化控制中心</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(18, 24, 38, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --accent: #8b5cf6;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+    
+    /* 玻璃拟态卡片 */
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    /* 顶部导航 */
+    header {
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(11, 15, 25, 0.95);
+      position: sticky; top: 0; z-index: 40;
+    }
+    .header-inner {
+      max-width: 1200px; margin: 0 auto; padding: 12px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1rem; color: #fff; }
+    .logo-badge {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    
+    .nav-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; }
+    .tab-btn {
+      background: transparent; border: none; color: var(--text-muted); padding: 8px 14px;
+      border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+      white-space: nowrap; display: flex; align-items: center; gap: 6px;
+    }
+    .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+    .tab-btn.active { color: #fff; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); }
+
+    /* 主体容器 */
+    main { max-width: 1200px; margin: 0 auto; padding: 24px 20px; flex: 1; width: 100%; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* 按钮与表单 */
+    .btn {
+      background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px;
+      font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .btn-secondary { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+    .btn-danger { background: var(--danger); }
+    .btn-success { background: var(--success); }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; }
+
+    .input-group { margin-bottom: 16px; }
+    .input-label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+    .input-control {
+      width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border);
+      border-radius: 10px; padding: 10px 14px; color: #fff; font-size: 0.9rem; outline: none; transition: all 0.2s;
+    }
+    .input-control:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+
+    /* 弹窗遮罩 */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-card { width: 100%; max-width: 420px; padding: 32px 28px; }
+
+    /* 统计卡片网格 */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { padding: 20px; }
+    .stat-title { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 2rem; font-weight: 800; color: #fff; }
+    .stat-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* 搜片大厅 */
+    .search-box-wrap { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-result-item {
+      padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
+      gap: 16px; border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; background: rgba(255,255,255,0.02);
+    }
+
+    /* 美化工厂卡片 */
+    .factory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-bottom: 24px; }
+    .factory-card { padding: 24px; display: flex; flex-direction: column; justify-content: space-between; }
+    .factory-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 16px; }
+
+    /* 日志控制台 */
+    .log-box {
+      background: #000; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+      padding: 16px; height: 260px; overflow-y: auto; font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 0.82rem; color: #38bdf8; line-height: 1.6;
+    }
+
+    /* 服务集成表单 */
+    .service-card { padding: 22px; margin-bottom: 16px; }
+    .service-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+
+    /* Toast 提示浮窗 */
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      padding: 12px 18px; border-radius: 10px; color: #fff; font-size: 0.88rem; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 10px;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast-success { background: #065f46; border: 1px solid #10b981; }
+    .toast-error { background: #7f1d1d; border: 1px solid #ef4444; }
+    .toast-info { background: #1e3a8a; border: 1px solid #3b82f6; }
+
+    /* 移动端适配 */
+    @media (max-width: 640px) {
+      .header-inner { flex-direction: column; gap: 12px; align-items: stretch; }
+      .search-box-wrap { flex-direction: column; }
+      .search-result-item { flex-direction: column; align-items: stretch; }
+    }
+  
+    .size-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #cbd5e1;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+    }
+    .size-btn:hover, .size-btn.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+      box-shadow: 0 0 10px rgba(59,130,246,0.3);
+    }
+    .pill-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .pill-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: #f1f5f9;
+    }
+    .pill-btn.active {
+      background: rgba(59,130,246,0.2);
+      color: #60a5fa;
+      border-color: rgba(59,130,246,0.4);
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Toast 消息容器 -->
+  <div id="toast-container"></div>
+
+  <!-- 1. 认证弹窗 (首次初始化 或 登录，完全由原生原生 JS 控制，不加载任何外网 CDN) -->
+  <div id="auth-modal" class="modal-backdrop" style="display: none;">
+    <div class="glass-card modal-card">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="width: 56px; height: 56px; margin: 0 auto 12px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+          🎬
+        </div>
+        <h2 id="auth-title" style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px;">MediaHub Pro</h2>
+        <p id="auth-subtitle" style="font-size: 0.85rem; color: var(--text-muted);">私有家庭影院全能中枢系统</p>
+      </div>
+
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+        <div class="input-group">
+          <label class="input-label">管理员用户名</label>
+          <input type="text" id="auth-username" class="input-control" placeholder="输入管理员用户名" required autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label class="input-label">管理密码</label>
+          <input type="password" id="auth-password" class="input-control" placeholder="输入密码" required autocomplete="current-password">
+        </div>
+        <button type="submit" id="auth-submit-btn" class="btn" style="width: 100%; padding: 12px; margin-top: 8px;">
+          登入控制台
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 顶部主导航 -->
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-badge">🎬</div>
+        <span>MediaHub Pro</span>
+        <span style="font-size: 0.7rem; background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.4); padding: 2px 6px; border-radius: 6px; color: #60a5fa;">v1.2</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="nav-tabs" style="overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 4px 0;">
+          <button class="tab-btn active" onclick="switchTab('dashboard')">📊 影院总览</button>
+          <button class="tab-btn" onclick="switchTab('search')">🔍 智能搜片</button>
+          <button class="tab-btn" onclick="switchTab('gap')">🎯 漏集雷达</button>
+          <button class="tab-btn" onclick="switchTab('rank')">🏆 风云榜单</button>
+          <button class="tab-btn" onclick="switchTab('factory')">🎨 美化工厂</button>
+          <button class="tab-btn" onclick="switchTab('transfer')">⚡ 极速转存</button>
+          <button class="tab-btn" onclick="switchTab('services')">⚙️ 服务集成</button>
+        </div>
+        
+        <!-- 用户胶囊与下拉菜单 -->
+        <div style="position: relative;">
+          <div onclick="toggleUserDropdown()" style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); padding: 5px 12px; border-radius: 20px; cursor: pointer; transition: all 0.2s;">
+            <span id="header-user-avatar" style="font-size: 1.1rem;">🎬</span>
+            <span id="header-user-name" style="font-size: 0.85rem; font-weight: 600; color: #fff;">dapeng</span>
+            <span style="font-size: 0.7rem; color: var(--text-muted);">▼</span>
+          </div>
+
+          <!-- 下拉浮窗 -->
+          <div id="user-dropdown-menu" class="glass-card" style="display: none; position: absolute; right: 0; top: 42px; width: 180px; padding: 6px; z-index: 50; box-shadow: 0 10px 25px rgba(0,0,0,0.6);">
+            <div onclick="openChangePwdModal()" style="padding: 10px 12px; font-size: 0.85rem; color: #f8fafc; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">
+              🔑 修改登录密码
+            </div>
+            <div onclick="openAvatarModal()" style="padding: 10px 12px; font-size: 0.85rem; color: #f8fafc; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">
+              🖼️ 更换个性头像
+            </div>
+            <div onclick="openSystemLogsModal()" style="padding: 10px 12px; font-size: 0.85rem; color: #38bdf8; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">
+              📜 查看系统日志
+            </div>
+            <div style="height: 1px; background: rgba(255,255,255,0.08); margin: 4px 0;"></div>
+            <div onclick="logout()" style="padding: 10px 12px; font-size: 0.85rem; color: #ef4444; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">
+              🚪 安全退出登录
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  
+  <!-- 修改密码弹窗 -->
+  <div id="modal-change-pwd" class="modal-backdrop" style="display: none;">
+    <div class="glass-card modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-size: 1.1rem; font-weight: 700;">🔑 修改管理员密码</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeChangePwdModal()">✕</button>
+      </div>
+      <div class="input-group">
+        <label class="input-label">原密码</label>
+        <input type="password" id="input-old-pwd" class="input-control" placeholder="输入当前登录密码">
+      </div>
+      <div class="input-group">
+        <label class="input-label">新密码</label>
+        <input type="password" id="input-new-pwd" class="input-control" placeholder="输入新密码 (至少6位)">
+      </div>
+      <button class="btn" style="width: 100%; margin-top: 8px;" onclick="submitChangePwd()">确认修改密码</button>
+    </div>
+  </div>
+
+  <!-- 更换头像弹窗 -->
+  <div id="modal-avatar" class="modal-backdrop" style="display: none;">
+    <div class="glass-card modal-card" style="max-width: 360px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 1.1rem; font-weight: 700;">🖼️ 选择个性头像</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeAvatarModal()">✕</button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+        <div onclick="selectAvatar('🎬')" style="font-size: 2rem; padding: 12px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer;">🎬</div>
+        <div onclick="selectAvatar('🍿')" style="font-size: 2rem; padding: 12px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer;">🍿</div>
+        <div onclick="selectAvatar('👑')" style="font-size: 2rem; padding: 12px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer;">👑</div>
+        <div onclick="selectAvatar('🚀')" style="font-size: 2rem; padding: 12px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer;">🚀</div>
+        <div onclick="selectAvatar('⚡')" style="font-size: 2rem; padding: 12px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer;">⚡</div>
+        <div onclick="selectAvatar('👾')" style="font-size: 2rem; padding: 12px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer;">👾</div>
+        <div onclick="selectAvatar('🌟')" style="font-size: 2rem; padding: 12px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer;">🌟</div>
+        <div onclick="selectAvatar('🤖')" style="font-size: 2rem; padding: 12px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer;">🤖</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 系统全局功能中心与实时进度大窗 -->
+  <div id="modal-system-logs" class="modal-backdrop" style="display: none;">
+    <div class="glass-card modal-card" style="max-width: 720px; width: 92%; max-height: 85vh; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.3rem;">🚀</span>
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 700;">系统运行中心与实时进度</h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">实时监视各模块执行任务、动态进度与系统审计记录</p>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="closeSystemLogsModal()">✕</button>
+      </div>
+
+      <!-- 1. 当前正在运行的模块与实时进度展台 -->
+      <div class="glass-card" style="padding: 16px; margin-bottom: 14px; background: rgba(0,0,0,0.4); border: 1px solid rgba(59,130,246,0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="modal-task-pulse" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #64748b;"></span>
+            <span id="modal-task-name" style="font-weight: 700; font-size: 0.95rem; color: #fff;">后台运行状态: 空闲待命</span>
+          </div>
+          <button id="modal-task-stop-btn" class="btn btn-danger btn-sm" style="display: none; padding: 4px 10px; font-size: 0.75rem;" onclick="stopTask()">终止此任务</button>
+        </div>
+
+        <div style="margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 5px;">
+            <span id="modal-task-item" style="color: #38bdf8;">当前无执行中任务</span>
+            <span id="modal-task-pct" style="font-weight: 700; color: #fff;">0%</span>
+          </div>
+          <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+            <div id="modal-task-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.3s;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 全局系统审计历史日志 -->
+      <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+        <span>📜 功能调度与系统审计日志</span>
+        <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 0.75rem;" onclick="fetchSystemLogs()">🔄 刷新历史</button>
+      </div>
+      <div id="system-logs-list" style="background: #000; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; flex: 1; height: 260px; overflow-y: auto; font-family: monospace; font-size: 0.82rem; line-height: 1.7; color: #a5f3fc;">
+        加载中...
+      </div>
+    </div>
+  </div>
+
+  <!-- 主体区域 -->
+  <main>
+    <!-- TAB 1: 仪表盘 -->
+    <div id="tab-dashboard" class="tab-content active">
+      <div class="stats-grid">
+        <div class="glass-card stat-card">
+          <div class="stat-title">电影资产总数</div>
+          <div class="stat-value" id="stat-movies">--</div>
+          <div class="stat-sub" id="stat-movies-sub">读取中...</div>
+        </div>
+        <div class="glass-card stat-card">
+          <div class="stat-title">剧集电视剧总数</div>
+          <div class="stat-value" id="stat-series">--</div>
+          <div class="stat-sub" id="stat-series-sub">读取中...</div>
+        </div>
+        <div class="glass-card stat-card">
+          <div class="stat-title">全库海报覆盖率</div>
+          <div class="stat-value" style="color: #38bdf8;" id="stat-rate">--%</div>
+          <div class="stat-sub">TMDB 官方高清画质保障</div>
+        </div>
+        <div class="glass-card stat-card">
+          <div class="stat-title">转存自动化就绪</div>
+          <div class="stat-value" style="color: #34d399;" id="stat-cms-status">在线</div>
+          <div class="stat-sub">CMS 115 调度引擎已就绪</div>
+        </div>
+      </div>
+
+      <div class="glass-card" style="padding: 24px;">
+        <h3 style="font-size: 1.1rem; margin-bottom: 12px; font-weight: 700;">🚀 快捷影院操作</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 18px;">
+          MediaHub Pro 已打通 PanSou 搜片、115 云转存、Emby 海报元数据与 Media Saber 联动体系。
+        </p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn" onclick="switchTab('search')">🔍 立即前往搜片大厅</button>
+          <button class="btn btn-secondary" onclick="switchTab('factory')">🎨 一键执行海报与画质美化</button>
+          <button class="btn btn-secondary" onclick="refreshStats()">🔄 刷新 Emby 资产数据</button>
+        </div>
+      </div>
+
+      <!-- 缺失海报清单详情卡片 -->
+      <div class="glass-card" id="missing-posters-card" style="padding: 24px; margin-top: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.25rem;">🖼️</span>
+              <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0;">全库缺失海报条目详情</h3>
+              <span id="missing-badge-total" class="badge" style="background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.3); font-size: 0.75rem;">读取中...</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; margin-bottom: 0;">
+              精准定位刮削失败、无封面的生肉条目，支持单部一键极速补齐海报与背景图。
+            </p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <input type="text" id="missing-search-input" class="input-control" placeholder="按片名过滤..." style="width: 160px; padding: 6px 12px; font-size: 0.8rem;" oninput="onMissingSearchInput()">
+            <button class="btn btn-secondary btn-sm" onclick="fetchMissingPosters(true)">🔄 重新拉取</button>
+          </div>
+        </div>
+
+        <!-- 分类筛选药丸 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;">
+          <button class="pill-btn active" id="pill-missing-all" onclick="setMissingType('all')">全部缺失 <span id="cnt-missing-all" style="background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-size: 0.7rem;">0</span></button>
+          <button class="pill-btn" id="pill-missing-movie" onclick="setMissingType('Movie')">🎬 电影 <span id="cnt-missing-movie" style="background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-size: 0.7rem;">0</span></button>
+          <button class="pill-btn" id="pill-missing-series" onclick="setMissingType('Series')">📺 电视剧 <span id="cnt-missing-series" style="background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-size: 0.7rem;">0</span></button>
+        </div>
+
+                <!-- 批量操作控制浮条 (影院总览) -->
+        <div id="missing-batch-bar" style="display: none; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+            <span>已勾选 <b id="missing-batch-count" style="color: #60a5fa; font-size: 1rem;">0</b> 项影视条目</span>
+            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.75rem;" onclick="selectAllCurrentPage(true)">全选本页</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button class="btn btn-sm" id="btn-batch-fix" onclick="executeBatchFix()" style="padding: 6px 14px; font-size: 0.8rem; background: #3b82f6;">
+              ✨ 批量自动补齐勾选项 (<span id="batch-fix-num">0</span>)
+            </button>
+            <button class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.8rem;" onclick="clearBatchSelection()">取消选择</button>
+          </div>
+        </div>
+
+        <!-- 数据表格容器 (带横向滚动支持移动端) -->
+        <div style="overflow-x: auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.2);">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;">
+            <thead>
+              <tr style="background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--text-muted);">
+                <th style="padding: 10px 8px; width: 38px; text-align: center;">
+                  <input type="checkbox" id="chk-select-all" onclick="toggleSelectAllPage(this.checked)" style="cursor: pointer; width: 16px; height: 16px; accent-color: #3b82f6;">
+                </th>
+                <th style="padding: 10px 10px; width: 55px;">序号</th>
+                <th style="padding: 10px 14px;">影视名称 / 条目</th>
+                <th style="padding: 10px 14px; width: 90px;">类型</th>
+                <th style="padding: 10px 14px; width: 110px;">TMDB ID</th>
+                <th style="padding: 10px 14px; width: 120px; text-align: right;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="missing-table-body">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted);">正在加载缺失海报数据...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 底部分页控制器 (50 100 200 500 全部) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; font-size: 0.8rem; color: var(--text-muted);">
+          <div id="missing-page-info">
+            第 1 / 1 页 (共 0 条)
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" id="btn-missing-prev" onclick="changeMissingPage(-1)">上一页</button>
+            <button class="btn btn-secondary btn-sm" id="btn-missing-next" onclick="changeMissingPage(1)">下一页</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span style="margin-right: 4px;">每页:</span>
+            <button class="size-btn active" id="size-btn-50" onclick="setMissingPageSize(50)">50</button>
+            <button class="size-btn" id="size-btn-100" onclick="setMissingPageSize(100)">100</button>
+            <button class="size-btn" id="size-btn-200" onclick="setMissingPageSize(200)">200</button>
+            <button class="size-btn" id="size-btn-500" onclick="setMissingPageSize(500)">500</button>
+            <button class="size-btn" id="size-btn-0" onclick="setMissingPageSize(0)">全部</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 2: 智能搜片 -->
+    <div id="tab-search" class="tab-content">
+      <div class="glass-card" style="padding: 24px; margin-bottom: 20px;">
+        <h3 style="font-size: 1.1rem; margin-bottom: 8px; font-weight: 700;">🔍 双引擎全网智能搜片</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          专精 115 原盘转存与 Media Saber 自动追更体系，彻底屏蔽无关网盘，直出纯净 115 链接！
+        </p>
+        <div class="search-box-wrap">
+          <input type="text" id="search-input" class="input-control" placeholder="输入影视名称，例如: 庆余年、黑岛监狱、流浪地球" onkeydown="if(event.key==='Enter') executeSearch()">
+          <button class="btn" onclick="executeSearch()" id="search-btn">
+            全网检索
+          </button>
+        </div>
+      </div>
+
+      <div id="search-results-list"></div>
+    </div>
+
+        <!-- TAB 2.5: 漏集雷达 -->
+    <div id="tab-gap" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: #f1f5f9; margin-bottom: 4px;">🎯 电视剧漏集靶向雷达</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted);">
+            毫秒级比对 Emby 真实已落盘集数与 TMDB 官方季集，锁定缺失分集并下发定向补齐抓取
+          </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-primary" onclick="loadGapList(1)" style="padding: 8px 14px; border-radius: 10px; font-weight: 700; cursor: pointer;">🔄 重新扫描</button>
+          <button class="btn" id="btn-batch-fill" onclick="batchFillCurrentGaps()" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 800; padding: 8px 16px; border-radius: 10px; box-shadow: 0 4px 14px rgba(16,185,129,0.4); cursor: pointer; display: flex; align-items: center; gap: 6px;">🚀 补齐当前页 (20部)</button>
+          <button class="btn" id="btn-fill-all" onclick="triggerFillAllGaps()" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 800; padding: 8px 18px; border-radius: 10px; box-shadow: 0 4px 14px rgba(245,158,11,0.4); cursor: pointer; display: flex; align-items: center; gap: 6px;">👑 一键补齐全部漏集</button>
+        </div>
+      </div>
+
+      <!-- 后台全量补齐常驻实时进度卡片 -->
+      <div id="gap-running-card" class="glass-card" style="display: none; margin-bottom: 20px; padding: 16px 20px; border: 1px solid rgba(245,158,11,0.4); background: rgba(245,158,11,0.06); border-radius: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 8px #f59e0b;" class="pulse"></div>
+            <b id="gap-task-name" style="font-size: 0.95rem; color: #fbbf24;">正在全量后台补齐...</b>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span id="gap-task-progress-text" style="font-size: 0.85rem; font-weight: 700; color: #f1f5f9;">0/0</span>
+            <button class="btn btn-sm" onclick="stopTask()" style="background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.4); padding: 4px 12px; border-radius: 6px; font-weight: 700;">终止任务</button>
+          </div>
+        </div>
+        <div style="font-size: 0.82rem; color: #cbd5e1; margin-bottom: 10px;" id="gap-task-current-item">正在调度中...</div>
+        <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+          <div id="gap-task-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #f59e0b, #10b981); transition: width 0.3s;"></div>
+        </div>
+      </div>
+
+      <div class="glass-card" style="margin-bottom: 16px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #10b981; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <span style="font-size: 0.88rem; color: #cbd5e1;">当前筛选下漏集剧集：</span>
+          <b id="gap-total-count" style="font-size: 1.3rem; color: #34d399; margin-left: 6px;">--</b> 部
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted);">
+          支持按媒体库单独补齐或跨库批量补齐，已启用 115 网盘自动优先抓取
+        </div>
+      </div>
+
+      <!-- 媒体库分类药丸选择栏 (支持横向滑动) -->
+      <div id="gap-library-pills" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 14px; scrollbar-width: none;">
+        <button class="rank-pill active" onclick="switchGapLibrary('全部', this)" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; border: none; background: #2563eb; color: #fff; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 6px;">
+          全部
+        </button>
+      </div>
+
+      <div id="gap-list-container">
+        <div style="text-align: center; color: var(--text-muted); padding: 40px;">正在穿透扫描 Emby 媒体库漏集数据...</div>
+      </div>
+
+      <!-- 漏集雷达底部分页控制中心 (支持 25, 50, 100, 500, 全部) -->
+      <div id="gap-pagination" style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 24px; padding-bottom: 30px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button class="btn btn-sm" id="btn-gap-prev" onclick="changeGapPage(-1)" style="background: rgba(255,255,255,0.08); color: #cbd5e1; padding: 8px 18px; border-radius: 10px; font-weight: 700; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;">
+            ◀ 上一页
+          </button>
+          <span id="gap-page-info" style="font-size: 0.88rem; color: #94a3b8; font-weight: 600;">
+            第 1 / -- 页
+          </span>
+          <button class="btn btn-sm" id="btn-gap-next" onclick="changeGapPage(1)" style="background: #2563eb; color: #fff; padding: 8px 18px; border-radius: 10px; font-weight: 700; border: 1px solid rgba(37,99,235,0.4); box-shadow: 0 4px 12px rgba(37,99,235,0.3); cursor: pointer;">
+            下一页 ▶
+          </button>
+        </div>
+
+        <!-- 每页显示数量选择器 -->
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #94a3b8; flex-wrap: wrap; justify-content: center;">
+          <span>每页显示：</span>
+          <button class="gap-size-btn active" onclick="changeGapPageSize(25, this)" style="background: #2563eb; color: #fff; border: none; padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer;">25</button>
+          <button class="gap-size-btn" onclick="changeGapPageSize(50, this)" style="background: rgba(255,255,255,0.08); color: #cbd5e1; border: none; padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer;">50</button>
+          <button class="gap-size-btn" onclick="changeGapPageSize(100, this)" style="background: rgba(255,255,255,0.08); color: #cbd5e1; border: none; padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer;">100</button>
+          <button class="gap-size-btn" onclick="changeGapPageSize(500, this)" style="background: rgba(255,255,255,0.08); color: #cbd5e1; border: none; padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer;">500</button>
+          <button class="gap-size-btn" onclick="changeGapPageSize(0, this)" style="background: rgba(255,255,255,0.08); color: #cbd5e1; border: none; padding: 4px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer;">全部</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2.6: 全网影视风云榜 -->
+    <div id="tab-rank" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: #f1f5f9; margin-bottom: 4px;">🏆 全网影视风云榜单</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted);">
+            实时同步豆瓣、TMDB 权威影视榜单，一键穿透智能搜片与下发 PT 追更
+          </p>
+        </div>
+      </div>
+
+      <!-- 榜单分类 Pills -->
+      <div style="display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; padding-bottom: 12px; margin-bottom: 16px;">
+        <button class="btn btn-sm rank-pill active" onclick="switchRankSubject('douban_tv', 'tv_domestic', this)" style="background: #2563eb; color: #fff; border-radius: 20px; padding: 6px 16px; font-weight: 700; cursor: pointer;">🔥 热播国产剧</button>
+        <button class="btn btn-sm rank-pill" onclick="switchRankSubject('douban_tv', 'tv_hot', this)" style="background: rgba(255,255,255,0.06); color: #cbd5e1; border-radius: 20px; padding: 6px 16px; font-weight: 600; cursor: pointer;">🌟 全网热播大剧</button>
+        <button class="btn btn-sm rank-pill" onclick="switchRankSubject('douban_tv', 'tv_american', this)" style="background: rgba(255,255,255,0.06); color: #cbd5e1; border-radius: 20px; padding: 6px 16px; font-weight: 600; cursor: pointer;">🗽 热门欧美剧</button>
+        <button class="btn btn-sm rank-pill" onclick="switchRankSubject('douban_movie', 'movie_hot_gaia', this)" style="background: rgba(255,255,255,0.06); color: #cbd5e1; border-radius: 20px; padding: 6px 16px; font-weight: 600; cursor: pointer;">🍿 实时热映电影</button>
+        <button class="btn btn-sm rank-pill" onclick="switchRankSubject('douban_movie', 'movie_top250', this)" style="background: rgba(255,255,255,0.06); color: #cbd5e1; border-radius: 20px; padding: 6px 16px; font-weight: 600; cursor: pointer;">👑 豆瓣 Top250</button>
+      </div>
+
+      <div id="rank-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px;">
+        <div style="text-align: center; color: var(--text-muted); padding: 40px; grid-column: 1 / -1;">正在拉取实时影视榜单...</div>
+      </div>
+
+      <!-- 影视榜单底部分页条 -->
+      <div id="rank-pagination" style="display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 24px; padding-bottom: 20px;">
+        <button class="btn btn-sm" id="btn-rank-prev" onclick="changeRankPage(-1)" style="background: rgba(255,255,255,0.08); color: #cbd5e1; padding: 8px 18px; border-radius: 10px; font-weight: 700; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;">
+          ◀ 上一页
+        </button>
+        <span id="rank-page-info" style="font-size: 0.88rem; color: #94a3b8; font-weight: 600;">
+          第 1 / -- 页
+        </span>
+        <button class="btn btn-sm" id="btn-rank-next" onclick="changeRankPage(1)" style="background: #2563eb; color: #fff; padding: 8px 18px; border-radius: 10px; font-weight: 700; border: 1px solid rgba(37,99,235,0.4); box-shadow: 0 4px 12px rgba(37,99,235,0.3); cursor: pointer;">
+          下一页 ▶
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB 3: 美化工厂 -->
+    <div id="tab-factory" class="tab-content">
+            <div class="factory-grid">
+        <!-- 卡片 1: 海报自动补齐 -->
+        <div class="glass-card factory-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="factory-icon" style="background: rgba(59,130,246,0.15); color: #60a5fa;">🖼️</div>
+            <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 8px;">全库海报自动补齐</h4>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
+              针对 Emby 中丢失封面、刮削失败的生肉条目，自动向 TMDB 获取中文主海报与背景图并无缝注入。
+            </p>
+            <div style="font-size: 0.8rem; margin-bottom: 14px; color: #94a3b8; display: flex; gap: 12px; flex-wrap: wrap;">
+              <span>🎬 缺海报电影: <b id="factory-cnt-mov" style="color: #60a5fa;">--</b></span>
+              <span>📺 缺海报剧集: <b id="factory-cnt-ser" style="color: #c084fc;">--</b></span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn" onclick="triggerTask('/api/emby/fix-posters', '全库海报自动补齐')">⚡ 全库批量补齐</button>
+            <button class="btn btn-secondary" onclick="scrollToFactoryMissing('all')">📋 查看缺失详情清单</button>
+          </div>
+        </div>
+
+        <!-- 卡片 2: 4K 杜比视界角标 -->
+        <div class="glass-card factory-card">
+          <div>
+            <div class="factory-icon" style="background: rgba(245,158,11,0.15); color: #fbbf24;">🏷️</div>
+            <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 8px;">4K 杜比视界高品角标</h4>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+              智能探测全库媒体流格式，为 4K UHD、HDR10 与 Dolby Vision 原盘影视自动打上尊贵画质认证标。
+            </p>
+          </div>
+          <button class="btn" onclick="triggerTask('/api/features/dolby-badge', '4K 杜比视界打标')">开始扫描打标</button>
+        </div>
+
+        <!-- 卡片 3: 系列电影自动合集 -->
+        <div class="glass-card factory-card">
+          <div>
+            <div class="factory-icon" style="background: rgba(139,92,246,0.15); color: #c084fc;">📦</div>
+            <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 8px;">系列电影(BoxSet)自动打包</h4>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+              自动识别漫威宇宙、哈利波特、指环王、速度与激情等连贯作品，一键归类整合为精美合集。
+            </p>
+          </div>
+          <button class="btn" onclick="triggerTask('/api/features/auto-collections', '系列电影自动合集')">整理全库合集</button>
+        </div>
+
+        <!-- 卡片 4: 中文字幕全自动匹配 -->
+        <div class="glass-card factory-card">
+          <div>
+            <div class="factory-icon" style="background: rgba(16,185,129,0.15); color: #34d399;">🔤</div>
+            <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 8px;">全库生肉中文字幕自动匹配</h4>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+              自动遍历检索 Emby 中缺少中文音轨与字幕的影视，调度射手网与 SubHD 接口一键批量下载补齐。
+            </p>
+          </div>
+          <button class="btn" onclick="triggerTask('/api/features/fetch-subtitles', '全库生肉字幕匹配')">一键匹配字幕</button>
+        </div>
+
+        <!-- 卡片 5: 单集剧情简介与剧照 -->
+        <div class="glass-card factory-card">
+          <div>
+            <div class="factory-icon" style="background: rgba(236,72,153,0.15); color: #f472b6;">🎬</div>
+            <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 8px;">单集剧情简介与剧照智能补齐</h4>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+              扫描全库剧集分集元数据，自动从 TMDB 拉取单集中文分集概述与标准单集标题，拒绝空白剧照。
+            </p>
+          </div>
+          <button class="btn" onclick="triggerTask('/api/features/fix-episodes', '单集简介与剧照补齐')">智能补充分集</button>
+        </div>
+
+        <!-- 卡片 6: 坏种与死链自愈巡检 -->
+        <div class="glass-card factory-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="factory-icon" style="background: rgba(14,165,233,0.15); color: #38bdf8;">🧹</div>
+            <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 8px;">STRM 坏种与死链自愈巡检</h4>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
+              智能并发探活全库挂载与网盘流，严格识别失效外部分享与404坏种；支持一键将坏种及伴生NFO整包安全移入NAS隔离区，并可联动115云端将源视频同步软移至「115cms_重复隔离归档」，从源头彻底杜绝死链死灰复燃，零物理抹除，保留完整撤回期。
+            </p>
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.04); padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.08);">
+              <label for="switch-sync-115" style="font-size: 0.82rem; color: #e2e8f0; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                <span>☁️ 联动 115 云端同步移入隔离区</span>
+              </label>
+              <input type="checkbox" id="switch-sync-115" checked style="width: 18px; height: 18px; cursor: pointer; accent-color: #38bdf8;">
+            </div>
+            <button class="btn" style="width: 100%;" onclick="triggerCleanStrm()">开始巡检自愈</button>
+          </div>
+        </div>
+      </div>
+
+      
+      <!-- 美化工厂: 缺失海报清单详情卡片 -->
+      <div class="glass-card" id="factory-missing-posters-card" style="padding: 24px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.25rem;">🖼️</span>
+              <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0;">全库缺失海报详情清单 (电影与电视剧)</h3>
+              <span id="factory-missing-badge-total" class="badge" style="background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.3); font-size: 0.75rem;">读取中...</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; margin-bottom: 0;">
+              精准定位刮削失败、无封面的生肉条目，支持单部一键极速补齐海报与背景图。
+            </p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <input type="text" id="factory-missing-search-input" class="input-control" placeholder="按片名过滤..." style="width: 160px; padding: 6px 12px; font-size: 0.8rem;" oninput="onFactoryMissingSearchInput()">
+            <button class="btn btn-secondary btn-sm" onclick="fetchMissingPosters(true)">🔄 重新拉取</button>
+          </div>
+        </div>
+
+        <!-- 分类筛选药丸 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;">
+          <button class="pill-btn active" id="pill-factory-missing-all" onclick="setMissingType('all')">全部缺失 <span id="factory-cnt-missing-all" style="background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-size: 0.7rem;">0</span></button>
+          <button class="pill-btn" id="pill-factory-missing-movie" onclick="setMissingType('Movie')">🎬 电影 <span id="factory-cnt-missing-movie" style="background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-size: 0.7rem;">0</span></button>
+          <button class="pill-btn" id="pill-factory-missing-series" onclick="setMissingType('Series')">📺 电视剧 <span id="factory-cnt-missing-series" style="background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-size: 0.7rem;">0</span></button>
+        </div>
+
+                <!-- 批量操作控制浮条 (美化工厂) -->
+        <div id="factory-missing-batch-bar" style="display: none; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+            <span>已勾选 <b id="factory-missing-batch-count" style="color: #60a5fa; font-size: 1rem;">0</b> 项影视条目</span>
+            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.75rem;" onclick="selectAllCurrentPage(true)">全选本页</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button class="btn btn-sm" id="btn-batch-fix-f" onclick="executeBatchFix()" style="padding: 6px 14px; font-size: 0.8rem; background: #3b82f6;">
+              ✨ 批量自动补齐勾选项 (<span id="factory-batch-fix-num">0</span>)
+            </button>
+            <button class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.8rem;" onclick="clearBatchSelection()">取消选择</button>
+          </div>
+        </div>
+
+        <!-- 数据表格容器 (带横向滚动支持移动端) -->
+        <div style="overflow-x: auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.2);">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;">
+            <thead>
+              <tr style="background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--text-muted);">
+                <th style="padding: 10px 8px; width: 38px; text-align: center;">
+                  <input type="checkbox" id="chk-select-all-f" onclick="toggleSelectAllPage(this.checked)" style="cursor: pointer; width: 16px; height: 16px; accent-color: #3b82f6;">
+                </th>
+                <th style="padding: 10px 10px; width: 55px;">序号</th>
+                <th style="padding: 10px 14px;">影视名称 / 条目</th>
+                <th style="padding: 10px 14px; width: 90px;">类型</th>
+                <th style="padding: 10px 14px; width: 110px;">TMDB ID</th>
+                <th style="padding: 10px 14px; width: 120px; text-align: right;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="factory-missing-table-body">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted);">正在加载缺失海报数据...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 底部分页控制器 (50 100 200 500 全部) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; font-size: 0.8rem; color: var(--text-muted);">
+          <div id="factory-missing-page-info">
+            第 1 / 1 页 (共 0 条)
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" id="btn-factory-missing-prev" onclick="changeMissingPage(-1)">上一页</button>
+            <button class="btn btn-secondary btn-sm" id="btn-factory-missing-next" onclick="changeMissingPage(1)">下一页</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span style="margin-right: 4px;">每页:</span>
+            <button class="size-btn active" id="size-btn-f-50" onclick="setMissingPageSize(50)">50</button>
+            <button class="size-btn" id="size-btn-f-100" onclick="setMissingPageSize(100)">100</button>
+            <button class="size-btn" id="size-btn-f-200" onclick="setMissingPageSize(200)">200</button>
+            <button class="size-btn" id="size-btn-f-500" onclick="setMissingPageSize(500)">500</button>
+            <button class="size-btn" id="size-btn-f-0" onclick="setMissingPageSize(0)">全部</button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- 实时日志终端 -->
+      <div class="glass-card" style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+            <span style="font-weight: 700; font-size: 0.9rem;" id="task-title">任务监控终端 (待命)</span>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="stopTask()">强制终止</button>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">
+            <span id="task-current-item">就绪</span>
+            <span id="task-progress-text">0/0</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+            <div id="task-progress-bar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.3s;"></div>
+          </div>
+        </div>
+        <div class="log-box" id="task-log-box">
+          [00:00:00] 系统终端已初始化，等待下发任务指令...
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: 极速转存 -->
+    <div id="tab-transfer" class="tab-content">
+      <div class="glass-card" style="padding: 24px; margin-bottom: 20px;">
+        <h3 style="font-size: 1.1rem; margin-bottom: 8px; font-weight: 700;">⚡ 115 分享链接极速转存</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          粘贴 115 官方分享链接与提取码，直接调度 CMS 挂载至网盘并生成 STRM。
+        </p>
+        <div class="input-group">
+          <input type="text" id="transfer-url" class="input-control" placeholder="粘贴 115 分享链接，例如: https://115.com/s/xxxx?password=xxxx">
+        </div>
+        <button class="btn" onclick="submitTransfer()">立即提交转存</button>
+      </div>
+
+      <div class="glass-card" style="padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div>
+            <h4 style="font-size: 1.05rem; font-weight: 700;">📋 CMS 115 实时转存监控看板</h4>
+            <p style="font-size: 0.78rem; color: var(--text-muted);">实时核对 115 网盘离线状态，失败自动报警并提供一键换源</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="fetchTransferList()">🔄 刷新列表</button>
+        </div>
+        <div id="transfer-queue-list" style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 20px;">正在获取 CMS 转存任务...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: 服务集成 -->
+    <div id="tab-services" class="tab-content">
+      <div class="glass-card" style="padding: 24px; margin-bottom: 20px;">
+        <h3 style="font-size: 1.1rem; margin-bottom: 6px; font-weight: 700;">⚙️ 外部影院服务深度集成</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          点击【深度测试】将执行业务级握手校验，确保 API 权限与服务通信绝对畅通。
+        </p>
+      </div>
+
+      <!-- Emby -->
+      <div class="glass-card service-card">
+        <div class="service-header">
+          <div style="font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+            <span>🎬 Emby 媒体服务器</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="testService('emby')">深度测试</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="input-group">
+            <label class="input-label">服务地址</label>
+            <input type="text" id="cfg-emby-url" class="input-control" placeholder="http://192.168.32.8:8096">
+          </div>
+          <div class="input-group">
+            <label class="input-label">API 密钥 (API Key)</label>
+            <input type="text" id="cfg-emby-key" class="input-control" placeholder="输入 Emby API 密钥">
+          </div>
+        </div>
+      </div>
+
+      <!-- CMS -->
+      <div class="glass-card service-card">
+        <div class="service-header">
+          <div style="font-weight: 700; font-size: 1rem;">⚡ Cloud-Media-Sync (CMS)</div>
+          <button class="btn btn-secondary btn-sm" onclick="testService('cms')">深度测试</button>
+        </div>
+        <div class="input-group">
+          <label class="input-label">服务地址 (内网直接免密直通)</label>
+          <input type="text" id="cfg-cms-url" class="input-control" placeholder="http://192.168.32.8:9527">
+        </div>
+      </div>
+
+      <!-- PanSou -->
+      <div class="glass-card service-card">
+        <div class="service-header">
+          <div style="font-weight: 700; font-size: 1rem;">🔍 PanSou-Web 搜片爬虫</div>
+          <button class="btn btn-secondary btn-sm" onclick="testService('pansou')">深度测试</button>
+        </div>
+        <div class="input-group">
+          <label class="input-label">服务地址</label>
+          <input type="text" id="cfg-pansou-url" class="input-control" placeholder="http://192.168.32.8:18933">
+        </div>
+      </div>
+
+      <!-- Media Saber -->
+      <div class="glass-card service-card">
+        <div class="service-header">
+          <div style="font-weight: 700; font-size: 1rem;">🛡️ Media Saber (MS PT追更)</div>
+          <button class="btn btn-secondary btn-sm" onclick="testService('media_saber')">深度测试</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="input-group">
+            <label class="input-label">服务地址</label>
+            <input type="text" id="cfg-ms-url" class="input-control" placeholder="http://192.168.32.8:18512">
+          </div>
+          <div class="input-group">
+            <label class="input-label">API Token / 访问密钥</label>
+            <input type="text" id="cfg-ms-token" class="input-control" placeholder="输入 MS 密钥">
+          </div>
+        </div>
+      </div>
+
+      <button class="btn" style="width: 100%; padding: 12px; margin-top: 8px;" onclick="saveAllConfig()">
+        💾 保存全部外部服务设置
+      </button>
+    </div>
+  </main>
+
+  <script>
+    // ---------------- 全局纯原生 JS 状态驱动 (零外网依赖) ----------------
+    let token = localStorage.getItem('mediahub_token') || '';
+    let currentAuthMode = 'login'; // 'init' or 'login'
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerText = msg;
+      container.appendChild(t);
+      setTimeout(() => { t.remove(); }, 3500);
+    }
+
+    // 检查认证状态
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/status');
+        const data = await res.json();
+        if (!data.initialized) {
+          currentAuthMode = 'init';
+          document.getElementById('auth-title').innerText = '欢迎使用 MediaHub Pro';
+          document.getElementById('auth-subtitle').innerText = '请设置系统管理员账号与密码';
+          document.getElementById('auth-submit-btn').innerText = '创建并登入系统';
+          document.getElementById('auth-modal').style.display = 'flex';
+        } else if (!token) {
+          currentAuthMode = 'login';
+          document.getElementById('auth-title').innerText = '身份验证';
+          document.getElementById('auth-subtitle').innerText = '请输入管理员凭据访问控制台';
+          document.getElementById('auth-submit-btn').innerText = '登入控制台';
+          // 预填默认方便输入
+          document.getElementById('auth-username').value = '';
+          document.getElementById('auth-password').value = '';
+          document.getElementById('auth-modal').style.display = 'flex';
+        } else {
+          document.getElementById('auth-modal').style.display = 'none';
+          initApp();
+        }
+      } catch (e) {
+        showToast('连接后台服务异常: ' + e.message, 'error');
+      }
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const u = document.getElementById('auth-username').value.trim();
+      const p = document.getElementById('auth-password').value.trim();
+      if (!u || !p) return showToast('请输入用户名和密码', 'error');
+
+      const endpoint = currentAuthMode === 'init' ? '/api/auth/init' : '/api/auth/login';
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          token = data.token;
+          localStorage.setItem('mediahub_token', token);
+          document.getElementById('auth-modal').style.display = 'none';
+          showToast('验证通过，已成功登入控制台！', 'success');
+          initApp();
+        } else {
+          showToast(data.detail || '用户名或密码错误', 'error');
+        }
+      } catch (err) {
+        showToast('请求异常: ' + err.message, 'error');
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('mediahub_token');
+      token = '';
+      location.reload();
+    }
+
+        function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick')?.includes(tabId));
+      if (targetBtn) targetBtn.classList.add('active');
+      const targetContent = document.getElementById(`tab-${tabId}`);
+      if (targetContent) targetContent.classList.add('active');
+      
+      if (tabId === 'services') loadAllConfig();
+      if (tabId === 'gap') loadGapList(1);
+      if (tabId === 'rank') loadRankItems('douban_tv', 'tv_domestic');
+      if (tabId === 'transfer') {
+        fetchTransferList();
+        if (transferPollTimer) clearInterval(transferPollTimer);
+        transferPollTimer = setInterval(fetchTransferList, 4000);
+      } else {
+        if (transferPollTimer) { clearInterval(transferPollTimer); transferPollTimer = null; }
+      }
+    }
+
+    // ---------------- 漏集雷达业务逻辑 (支持全量翻页 & 媒体库分类 & 多档容量) ----------------
+    let currentGapList = [];
+    let currentGapPage = 1;
+    let currentGapPageSize = 25;
+    let currentGapLibrary = '全部';
+    let totalGapPages = 1;
+    let gapLibrariesCache = [];
+
+    function renderGapLibraries(libs) {
+      if (!libs || libs.length === 0) return;
+      gapLibrariesCache = libs;
+      const container = document.getElementById('gap-library-pills');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      libs.forEach(lib => {
+        const btn = document.createElement('button');
+        const isActive = lib.name === currentGapLibrary;
+        btn.className = `gap-lib-pill ${isActive ? 'active' : ''}`;
+        btn.style.cssText = `padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; border: none; background: ${isActive ? '#2563eb' : 'rgba(255,255,255,0.06)'}; color: ${isActive ? '#fff' : '#cbd5e1'}; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 6px;`;
+        btn.innerHTML = `${lib.name} <span style="background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 10px; font-size: 0.72rem;">${lib.count}</span>`;
+        btn.onclick = () => switchGapLibrary(lib.name, btn);
+        container.appendChild(btn);
+      });
+    }
+
+    function switchGapLibrary(libName, btn) {
+      currentGapLibrary = libName;
+      currentGapPage = 1;
+      document.querySelectorAll('.gap-lib-pill').forEach(b => {
+        b.style.background = 'rgba(255,255,255,0.06)';
+        b.style.color = '#cbd5e1';
+      });
+      if (btn) {
+        btn.style.background = '#2563eb';
+        btn.style.color = '#fff';
+      }
+      loadGapList(1);
+    }
+
+    function changeGapPageSize(size, btn) {
+      currentGapPageSize = size;
+      currentGapPage = 1;
+      document.querySelectorAll('.gap-size-btn').forEach(b => {
+        b.style.background = 'rgba(255,255,255,0.08)';
+        b.style.color = '#cbd5e1';
+      });
+      if (btn) {
+        btn.style.background = '#2563eb';
+        btn.style.color = '#fff';
+      }
+      loadGapList(1);
+    }
+
+    async function loadGapList(page = 1, forceRefresh = false) {
+      currentGapPage = page;
+      const container = document.getElementById('gap-list-container');
+      if (!container) return;
+      container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 30px;">正在穿透扫描 Emby 媒体库漏集数据...</div>';
+      try {
+        const libParam = currentGapLibrary && currentGapLibrary !== '全部' ? `&library=${encodeURIComponent(currentGapLibrary)}` : '';
+        const refreshParam = forceRefresh ? '&refresh=true' : '';
+        const res = await fetch(`/api/gap/list?page=${page}&page_size=${currentGapPageSize}${libParam}${refreshParam}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const d = await res.json();
+        const totalElem = document.getElementById('gap-total-count');
+        const total = d.total || 0;
+        if (totalElem) totalElem.innerText = total;
+        currentGapList = d.list || [];
+        
+        // 渲染或更新媒体库分类药丸
+        if (d.libraries && d.libraries.length > 0) {
+          renderGapLibraries(d.libraries);
+        }
+
+        // 动态更新顶部按钮文字
+        const batchBtn = document.getElementById('btn-batch-fill');
+        if (batchBtn && !isBatchFilling) {
+          batchBtn.innerHTML = `🚀 补齐当前页 (${currentGapList.length}部)`;
+        }
+
+        // 计算分页
+        if (currentGapPageSize <= 0) {
+          totalGapPages = 1;
+        } else {
+          totalGapPages = Math.ceil(total / currentGapPageSize) || 1;
+        }
+
+        // 更新翻页条状态
+        const pageInfo = document.getElementById('gap-page-info');
+        const prevBtn = document.getElementById('btn-gap-prev');
+        const nextBtn = document.getElementById('btn-gap-next');
+        if (pageInfo) pageInfo.innerText = `第 ${currentGapPage} / ${totalGapPages} 页 (共 ${total} 部)`;
+        if (prevBtn) {
+          prevBtn.disabled = currentGapPage <= 1;
+          prevBtn.style.opacity = currentGapPage <= 1 ? '0.4' : '1';
+          prevBtn.style.cursor = currentGapPage <= 1 ? 'not-allowed' : 'pointer';
+        }
+        if (nextBtn) {
+          nextBtn.disabled = currentGapPage >= totalGapPages;
+          nextBtn.style.opacity = currentGapPage >= totalGapPages ? '0.4' : '1';
+          nextBtn.style.cursor = currentGapPage >= totalGapPages ? 'not-allowed' : 'pointer';
+        }
+
+        if (currentGapList.length === 0) {
+          container.innerHTML = `<div class="glass-card" style="text-align: center; padding: 40px; color: #10b981; font-weight: 700;">🎉 太棒了！在【${currentGapLibrary}】媒体库中，所有电视剧全部集数完整，零漏集！</div>`;
+          return;
+        }
+
+        container.innerHTML = '';
+        currentGapList.forEach((it, idx) => {
+          const globalIdx = currentGapPageSize <= 0 ? (idx + 1) : ((currentGapPage - 1) * currentGapPageSize + idx + 1);
+          const card = document.createElement('div');
+          card.className = 'glass-card';
+          card.style.cssText = 'padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 10px; border-left: 3px solid #f59e0b;';
+
+          card.innerHTML = `
+            <div style="flex-shrink: 0; min-width: 42px; text-align: center;">
+              <span style="font-weight: 800; font-size: 0.95rem; color: #38bdf8; background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.3); padding: 4px 8px; border-radius: 8px; display: inline-block;">
+                #${globalIdx}
+              </span>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 700; font-size: 0.98rem; margin-bottom: 5px; color: #f1f5f9; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;">
+                <span>《${it.title}》</span>
+                <span style="font-size: 0.8rem; color: #94a3b8; font-weight: normal;">(${it.year || '未知年份'})</span>
+                <span style="font-size: 0.72rem; background: rgba(37,99,235,0.15); color: #60a5fa; border: 1px solid rgba(37,99,235,0.3); padding: 1px 7px; border-radius: 6px;">${it.library_name}</span>
+              </div>
+              <div style="font-size: 0.82rem; color: #fbbf24; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); padding: 3px 10px; border-radius: 8px; display: inline-block; font-weight: 500;">
+                ⚠️ ${it.miss_episodes_text}
+              </div>
+            </div>
+            <div style="flex-shrink: 0;">
+              <button id="btn-gap-${idx}" class="btn btn-sm" onclick="fillGapSeriesByIndex(${idx})" style="background: #059669; font-weight: 700; padding: 7px 14px; border-radius: 10px; box-shadow: 0 4px 12px rgba(5,150,105,0.3); cursor: pointer; white-space: nowrap; font-size: 0.85rem;">
+                🎯 补齐
+              </button>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+      } catch (e) {
+        container.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 30px;">扫描漏集失败: ${e.message}</div>`;
+      }
+    }
+
+    function changeGapPage(delta) {
+      const target = currentGapPage + delta;
+      if (target >= 1 && target <= totalGapPages) {
+        loadGapList(target);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    async function fillGapSeriesByIndex(idx) {
+      const it = currentGapList[idx];
+      if (!it) return;
+      const btn = document.getElementById(`btn-gap-${idx}`);
+      if (btn) {
+        btn.innerText = '下发中...';
+        btn.disabled = true;
+      }
+      try {
+        const res = await fetch('/api/gap/fill', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title: it.title,
+            year: it.year || 0,
+            seasons: it.seasons || []
+          })
+        });
+        const d = await res.json();
+        if (d.success) {
+          showToast(d.message, 'success');
+          if (btn) {
+            btn.innerText = '✅ 已下发缺集';
+            btn.style.background = '#334155';
+          }
+        } else {
+          showToast(d.message, 'error');
+          if (btn) {
+            btn.innerText = '重试补齐';
+            btn.disabled = false;
+          }
+        }
+      } catch (e) {
+        showToast('下发异常: ' + e.message, 'error');
+        if (btn) {
+          btn.innerText = '重试补齐';
+          btn.disabled = false;
+        }
+      }
+    }
+
+    async function fillGapSeries(title, year, idx, seasons = []) {
+      const btn = document.getElementById(`btn-gap-${idx}`);
+      if (btn) {
+        btn.innerText = '下发中...';
+        btn.disabled = true;
+      }
+      try {
+        const res = await fetch('/api/gap/fill', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ title, year, seasons })
+        });
+        const d = await res.json();
+        if (d.success) {
+          if (btn) {
+            btn.innerText = '✅ 已下发缺集';
+            btn.style.background = '#334155';
+          }
+        }
+      } catch (e) {}
+    }
+
+async function triggerFillAllGaps() {
+      const total = document.getElementById('gap-total-count').innerText;
+      if (!confirm(`🚀 确定要对当前分类下的所有漏集剧集 (${total} 部) 启动全量后台补齐吗？\n\n任务将交由绿联 NAS 后台常驻守护进程执行，手机关屏、断网都不会中断，Media Saber 会在 PT 与 115 云盘中全自动搜索抓取指定缺失季！`)) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/gap/fill-all', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const d = await res.json();
+        if (d.success) {
+          showToast(d.message, 'success');
+          startLogPolling();
+        } else {
+          showToast(d.message, 'error');
+        }
+      } catch (e) {
+        showToast('启动异常: ' + e.message, 'error');
+      }
+    }
+
+    let isBatchFilling = false;
+    async function batchFillCurrentGaps() {
+      if (isBatchFilling) return;
+      if (!currentGapList || currentGapList.length === 0) return showToast('当前没有可补齐的漏集剧集', 'error');
+      
+      const batchBtn = document.getElementById('btn-batch-fill');
+      isBatchFilling = true;
+      batchBtn.disabled = true;
+      
+      const total = currentGapList.length;
+      showToast(`🚀 开始全自动逐部下发补齐任务 (共 ${total} 部)...`, 'info');
+      
+      for (let i = 0; i < total; i++) {
+        const it = currentGapList[i];
+        batchBtn.innerText = `⏳ 正在补齐 (${i+1}/${total}): 《${it.title}》...`;
+        await fillGapSeries(it.title, it.year || 0, i);
+        await new Promise(r => setTimeout(r, 250));
+      }
+      
+      batchBtn.innerText = `🎉 已完成本页全部补齐！`;
+      batchBtn.style.background = '#334155';
+      showToast(`🎉 太棒了！已全部完成 ${total} 部剧集的补齐追更指令下发！`, 'success');
+      isBatchFilling = false;
+    }
+
+// ---------------- 影视榜单业务逻辑 (支持全量翻页) ----------------
+    let currentRankCategory = 'douban_tv';
+    let currentRankSubject = 'tv_domestic';
+    let currentRankPage = 1;
+    let totalRankPages = 1;
+
+    function switchRankSubject(cat, sub, btn) {
+      document.querySelectorAll('.rank-pill').forEach(b => {
+        b.style.background = 'rgba(255,255,255,0.06)';
+        b.style.color = '#cbd5e1';
+      });
+      btn.style.background = '#2563eb';
+      btn.style.color = '#fff';
+      currentRankCategory = cat;
+      currentRankSubject = sub;
+      currentRankPage = 1;
+      loadRankItems(cat, sub, 1);
+    }
+
+    async function loadRankItems(cat, sub, page = 1) {
+      currentRankPage = page;
+      const grid = document.getElementById('rank-items-grid');
+      if (!grid) return;
+      grid.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px; grid-column: 1 / -1;">正在拉取实时榜单数据...</div>';
+      try {
+        const res = await fetch(`/api/rank/items?category_code=${cat}&code=${sub}&page=${page}&page_size=12`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const d = await res.json();
+        const items = d.list || [];
+        const total = d.total || items.length;
+        totalRankPages = Math.ceil(total / 12) || 1;
+
+        // 更新翻页条状态
+        const pageInfo = document.getElementById('rank-page-info');
+        const prevBtn = document.getElementById('btn-rank-prev');
+        const nextBtn = document.getElementById('btn-rank-next');
+        if (pageInfo) pageInfo.innerText = `第 ${currentRankPage} / ${totalRankPages} 页 (共 ${total} 部)`;
+        if (prevBtn) {
+          prevBtn.disabled = currentRankPage <= 1;
+          prevBtn.style.opacity = currentRankPage <= 1 ? '0.4' : '1';
+          prevBtn.style.cursor = currentRankPage <= 1 ? 'not-allowed' : 'pointer';
+        }
+        if (nextBtn) {
+          nextBtn.disabled = currentRankPage >= totalRankPages;
+          nextBtn.style.opacity = currentRankPage >= totalRankPages ? '0.4' : '1';
+          nextBtn.style.cursor = currentRankPage >= totalRankPages ? 'not-allowed' : 'pointer';
+        }
+
+        if (items.length === 0) {
+          grid.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px; grid-column: 1 / -1;">该榜单暂无数据</div>';
+          return;
+        }
+
+        grid.innerHTML = '';
+        items.forEach(it => {
+          const card = document.createElement('div');
+          card.className = 'glass-card';
+          card.style.cssText = 'padding: 10px; display: flex; flex-direction: column; border-radius: 12px; position: relative; overflow: hidden;';
+
+          const posterUrl = it.poster || '';
+          const posterHtml = posterUrl 
+            ? `<div style="width: 100%; height: 210px; border-radius: 8px; background: #1e293b url('${posterUrl}') center/cover no-repeat; margin-bottom: 10px; position: relative;">
+                <span style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.75); color: #fbbf24; font-size: 0.75rem; font-weight: 800; padding: 2px 7px; border-radius: 6px; backdrop-filter: blur(4px);">★ ${it.rating}</span>
+               </div>`
+            : `<div style="width: 100%; height: 210px; border-radius: 8px; background: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 10px;">🎬</div>`;
+
+          card.innerHTML = `
+            ${posterHtml}
+            <div style="font-weight: 700; font-size: 0.88rem; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">
+              ${it.title}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">
+              ${it.year || ''} · ${it.media_type === 'tv' ? '电视剧' : '电影'}
+            </div>
+            <div style="display: flex; gap: 6px; margin-top: auto;">
+              <button class="btn btn-sm" onclick="quickJumpSearch('${it.title}')" style="flex: 1; background: #2563eb; font-size: 0.75rem; padding: 6px 0; border-radius: 6px; font-weight: 700; cursor: pointer;">
+                🔍 存115
+              </button>
+              <button class="btn btn-sm" onclick="quickSubscribe('${it.title}')" style="flex: 1; background: #059669; font-size: 0.75rem; padding: 6px 0; border-radius: 6px; font-weight: 700; cursor: pointer;">
+                ➕ PT追更
+              </button>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      } catch (e) {
+        grid.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 40px; grid-column: 1 / -1;">拉取榜单失败: ${e.message}</div>`;
+      }
+    }
+
+    function changeRankPage(delta) {
+      const target = currentRankPage + delta;
+      if (target >= 1 && target <= totalRankPages) {
+        loadRankItems(currentRankCategory, currentRankSubject, target);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    function quickJumpSearch(title) {
+      switchTab('search');
+      const input = document.getElementById('search-input');
+      if (input) input.value = title;
+      executeSearch();
+    }
+
+    // 载入统计
+    
+            // ================= 缺失海报详情、单条与批量补齐模块 =================
+    let missingState = {
+      mediaType: 'all',
+      page: 1,
+      pageSize: 50,
+      search: '',
+      totalPages: 1,
+      total: 0
+    };
+
+    let currentMissingItems = [];
+    let selectedMissingItems = new Map(); // id -> item
+
+    function openMissingPosters(type = 'all') {
+      switchTab('dashboard');
+      setMissingType(type);
+      setTimeout(() => {
+        const el = document.getElementById('missing-posters-card');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+
+    function scrollToFactoryMissing(type = 'all') {
+      setMissingType(type);
+      setTimeout(() => {
+        const el = document.getElementById('factory-missing-posters-card');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+
+    function setMissingType(type) {
+      missingState.mediaType = type;
+      missingState.page = 1;
+      
+      const pAll = document.getElementById('pill-missing-all');
+      const pMov = document.getElementById('pill-missing-movie');
+      const pSer = document.getElementById('pill-missing-series');
+      if (pAll) pAll.classList.toggle('active', type === 'all');
+      if (pMov) pMov.classList.toggle('active', type === 'Movie');
+      if (pSer) pSer.classList.toggle('active', type === 'Series');
+
+      const pfAll = document.getElementById('pill-factory-missing-all');
+      const pfMov = document.getElementById('pill-factory-missing-movie');
+      const pfSer = document.getElementById('pill-factory-missing-series');
+      if (pfAll) pfAll.classList.toggle('active', type === 'all');
+      if (pfMov) pfMov.classList.toggle('active', type === 'Movie');
+      if (pfSer) pfSer.classList.toggle('active', type === 'Series');
+
+      fetchMissingPosters();
+    }
+
+    function setMissingPageSize(size) {
+      missingState.pageSize = size;
+      missingState.page = 1;
+      
+      [50, 100, 200, 500, 0].forEach(s => {
+        const btn = document.getElementById(`size-btn-${s}`);
+        if (btn) btn.classList.toggle('active', s === size);
+        const btnF = document.getElementById(`size-btn-f-${s}`);
+        if (btnF) btnF.classList.toggle('active', s === size);
+      });
+
+      fetchMissingPosters();
+    }
+
+    function changeMissingPage(delta) {
+      const next = missingState.page + delta;
+      if (next >= 1 && next <= missingState.totalPages) {
+        missingState.page = next;
+        fetchMissingPosters();
+      }
+    }
+
+    let missingSearchTimer = null;
+    function onMissingSearchInput() {
+      clearTimeout(missingSearchTimer);
+      missingSearchTimer = setTimeout(() => {
+        const inp = document.getElementById('missing-search-input');
+        const val = inp ? inp.value.trim() : '';
+        missingState.search = val;
+        const inpF = document.getElementById('factory-missing-search-input');
+        if (inpF) inpF.value = val;
+        missingState.page = 1;
+        fetchMissingPosters();
+      }, 300);
+    }
+
+    function onFactoryMissingSearchInput() {
+      clearTimeout(missingSearchTimer);
+      missingSearchTimer = setTimeout(() => {
+        const inpF = document.getElementById('factory-missing-search-input');
+        const val = inpF ? inpF.value.trim() : '';
+        missingState.search = val;
+        const inp = document.getElementById('missing-search-input');
+        if (inp) inp.value = val;
+        missingState.page = 1;
+        fetchMissingPosters();
+      }, 300);
+    }
+
+    // --- 批量选择核心方法 ---
+    function toggleSelectRow(id, checked) {
+      const item = currentMissingItems.find(x => String(x.id) === String(id));
+      if (checked && item) {
+        selectedMissingItems.set(String(id), item);
+      } else {
+        selectedMissingItems.delete(String(id));
+      }
+      updateBatchBars();
+      syncCheckboxes();
+    }
+
+    function toggleSelectAllPage(checked) {
+      currentMissingItems.forEach(it => {
+        if (checked) {
+          selectedMissingItems.set(String(it.id), it);
+        } else {
+          selectedMissingItems.delete(String(it.id));
+        }
+      });
+      updateBatchBars();
+      syncCheckboxes();
+    }
+
+    function selectAllCurrentPage(checked) {
+      toggleSelectAllPage(checked);
+    }
+
+    function clearBatchSelection() {
+      selectedMissingItems.clear();
+      updateBatchBars();
+      syncCheckboxes();
+    }
+
+    function syncCheckboxes() {
+      document.querySelectorAll('.row-select-chk').forEach(chk => {
+        const id = chk.getAttribute('data-id');
+        chk.checked = selectedMissingItems.has(String(id));
+      });
+      const allChecked = currentMissingItems.length > 0 && currentMissingItems.every(x => selectedMissingItems.has(String(x.id)));
+      const chkAll = document.getElementById('chk-select-all');
+      const chkAllF = document.getElementById('chk-select-all-f');
+      if (chkAll) chkAll.checked = allChecked;
+      if (chkAllF) chkAllF.checked = allChecked;
+    }
+
+    function updateBatchBars() {
+      const count = selectedMissingItems.size;
+      const barDash = document.getElementById('missing-batch-bar');
+      const barFact = document.getElementById('factory-missing-batch-bar');
+      const displayVal = count > 0 ? 'flex' : 'none';
+      
+      if (barDash) barDash.style.display = displayVal;
+      if (barFact) barFact.style.display = displayVal;
+
+      const c1 = document.getElementById('missing-batch-count');
+      const c2 = document.getElementById('factory-missing-batch-count');
+      const n1 = document.getElementById('batch-fix-num');
+      const n2 = document.getElementById('factory-batch-fix-num');
+      if (c1) c1.innerText = count;
+      if (c2) c2.innerText = count;
+      if (n1) n1.innerText = count;
+      if (n2) n2.innerText = count;
+    }
+
+    async function executeBatchFix() {
+      const items = Array.from(selectedMissingItems.values());
+      if (!items.length) return showToast('请先勾选需要补齐海报的影视条目', 'warning');
+
+      const btn1 = document.getElementById('btn-batch-fix');
+      const btn2 = document.getElementById('btn-batch-fix-f');
+      const setLoading = (loading, text) => {
+        [btn1, btn2].forEach(btn => {
+          if (btn) {
+            btn.disabled = loading;
+            btn.innerText = text;
+          }
+        });
+      };
+
+      setLoading(true, `⏳ 正在并发批量补齐 (${items.length}部)...`);
+
+      try {
+        const res = await fetch('/api/emby/fix-batch-posters', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            items: items.map(it => ({
+              item_id: String(it.id),
+              name: it.name,
+              tmdb_id: it.tmdb_id || null,
+              type: it.type || 'Movie'
+            }))
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`🎉 批量补齐完成！成功注入 ${data.success_count} 部海报！${data.failed_count > 0 ? `(${data.failed_count}部未查到)` : ''}`, 'success');
+          
+          if (data.results) {
+            Object.keys(data.results).forEach(id => {
+              if (data.results[id].success) {
+                selectedMissingItems.delete(String(id));
+              }
+            });
+          }
+          clearBatchSelection();
+          await fetchMissingPosters();
+        } else {
+          showToast(`批量补齐失败: ${data.detail || '未知异常'}`, 'error');
+          setLoading(false, `✨ 批量自动补齐勾选项 (${items.length})`);
+        }
+      } catch (err) {
+        showToast(`请求异常: ${err.message}`, 'error');
+        setLoading(false, `✨ 批量自动补齐勾选项 (${items.length})`);
+      }
+    }
+
+    async function fetchMissingPosters(refresh = false) {
+      const tbodyDash = document.getElementById('missing-table-body');
+      const tbodyFact = document.getElementById('factory-missing-table-body');
+      
+      const loadingRow = '<tr><td colspan="6" style="text-align: center; padding: 30px; color: var(--text-muted);">正在加载缺失海报数据...</td></tr>';
+      if (tbodyDash && (!tbodyDash.children.length || tbodyDash.innerText.includes('正在加载'))) tbodyDash.innerHTML = loadingRow;
+      if (tbodyFact && (!tbodyFact.children.length || tbodyFact.innerText.includes('正在加载'))) tbodyFact.innerHTML = loadingRow;
+      
+      const params = new URLSearchParams({
+        media_type: missingState.mediaType,
+        page: missingState.page,
+        page_size: missingState.pageSize,
+        refresh: refresh,
+        search: missingState.search
+      });
+
+      try {
+        const res = await fetch(`/api/emby/missing-posters?${params.toString()}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('拉取失败');
+        const data = await res.json();
+        
+        currentMissingItems = data.items || [];
+        missingState.total = data.total;
+        missingState.totalPages = data.total_pages;
+        missingState.page = data.page;
+
+        const totCount = (data.movies_count + data.series_count) || 0;
+
+        const cntAll = document.getElementById('cnt-missing-all');
+        const cntMov = document.getElementById('cnt-missing-movie');
+        const cntSer = document.getElementById('cnt-missing-series');
+        const badgeTotal = document.getElementById('missing-badge-total');
+        if (cntAll) cntAll.innerText = totCount;
+        if (cntMov) cntMov.innerText = data.movies_count || 0;
+        if (cntSer) cntSer.innerText = data.series_count || 0;
+        if (badgeTotal) badgeTotal.innerText = `共缺 ${data.total} 部`;
+
+        const fCntAll = document.getElementById('factory-cnt-missing-all');
+        const fCntMov = document.getElementById('factory-cnt-missing-movie');
+        const fCntSer = document.getElementById('factory-cnt-missing-series');
+        const fBadgeTotal = document.getElementById('factory-missing-badge-total');
+        const fCardMov = document.getElementById('factory-cnt-mov');
+        const fCardSer = document.getElementById('factory-cnt-ser');
+        if (fCntAll) fCntAll.innerText = totCount;
+        if (fCntMov) fCntMov.innerText = data.movies_count || 0;
+        if (fCntSer) fCntSer.innerText = data.series_count || 0;
+        if (fBadgeTotal) fBadgeTotal.innerText = `共缺 ${data.total} 部`;
+        if (fCardMov) fCardMov.innerText = `${data.movies_count || 0} 部`;
+        if (fCardSer) fCardSer.innerText = `${data.series_count || 0} 部`;
+
+        const pageText = `第 ${data.page} / ${data.total_pages} 页 (当前筛选共 ${data.total} 条)`;
+        const pageInfoDash = document.getElementById('missing-page-info');
+        const pageInfoFact = document.getElementById('factory-missing-page-info');
+        if (pageInfoDash) pageInfoDash.innerText = pageText;
+        if (pageInfoFact) pageInfoFact.innerText = pageText;
+
+        const btnPrevDash = document.getElementById('btn-missing-prev');
+        const btnNextDash = document.getElementById('btn-missing-next');
+        const btnPrevFact = document.getElementById('btn-factory-missing-prev');
+        const btnNextFact = document.getElementById('btn-factory-missing-next');
+        if (btnPrevDash) btnPrevDash.disabled = data.page <= 1;
+        if (btnNextDash) btnNextDash.disabled = data.page >= data.total_pages;
+        if (btnPrevFact) btnPrevFact.disabled = data.page <= 1;
+        if (btnNextFact) btnNextFact.disabled = data.page >= data.total_pages;
+
+        renderBothMissingTables(data.items);
+        syncCheckboxes();
+        updateBatchBars();
+      } catch (err) {
+        const errRow = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #f87171;">加载异常: ${err.message}</td></tr>`;
+        if (tbodyDash) tbodyDash.innerHTML = errRow;
+        if (tbodyFact) tbodyFact.innerHTML = errRow;
+      }
+    }
+
+    function renderBothMissingTables(items) {
+      const tbodyDash = document.getElementById('missing-table-body');
+      const tbodyFact = document.getElementById('factory-missing-table-body');
+      
+      if (!items || items.length === 0) {
+        const emptyRow = '<tr><td colspan="6" style="text-align: center; padding: 30px; color: var(--text-muted);">🎉 太棒了，当前分类下无缺失海报条目！</td></tr>';
+        if (tbodyDash) tbodyDash.innerHTML = emptyRow;
+        if (tbodyFact) tbodyFact.innerHTML = emptyRow;
+        return;
+      }
+
+      const ps = missingState.pageSize;
+      const curPage = missingState.page;
+
+      const htmlDash = items.map((it, idx) => generateRowHtml(it, idx, ps, curPage, '')).join('');
+      const htmlFact = items.map((it, idx) => generateRowHtml(it, idx, ps, curPage, 'f-')).join('');
+
+      if (tbodyDash) tbodyDash.innerHTML = htmlDash;
+      if (tbodyFact) tbodyFact.innerHTML = htmlFact;
+    }
+
+    function generateRowHtml(it, idx, ps, curPage, prefix) {
+      const rowNum = ps <= 0 ? (idx + 1) : ((curPage - 1) * ps + idx + 1);
+      const isMovie = it.type === 'Movie';
+      const typeTag = isMovie 
+        ? '<span style="background: rgba(59,130,246,0.15); color: #60a5fa; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">🎬 电影</span>'
+        : '<span style="background: rgba(168,85,247,0.15); color: #c084fc; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">📺 剧集</span>';
+      
+      const tmdbBadge = it.tmdb_id
+        ? `<a href="https://www.themoviedb.org/${isMovie?'movie':'tv'}/${it.tmdb_id}" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 0.75rem;">TMDB:${it.tmdb_id}</a>`
+        : '<span style="color: var(--text-muted); font-size: 0.75rem;">未识别</span>';
+
+      const yearText = it.year ? `<span style="color: var(--text-muted); font-size: 0.75rem; margin-left: 6px;">(${it.year})</span>` : '';
+      const isChecked = selectedMissingItems.has(String(it.id));
+
+      return `
+        <tr id="missing-row-${prefix}${it.id}" style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+          <td style="padding: 10px 8px; text-align: center;">
+            <input type="checkbox" class="row-select-chk" data-id="${it.id}" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${it.id}', this.checked)" style="cursor: pointer; width: 16px; height: 16px; accent-color: #3b82f6;">
+          </td>
+          <td style="padding: 10px 10px; font-weight: 700; color: #94a3b8;">#${rowNum}</td>
+          <td style="padding: 10px 14px;">
+            <div style="font-weight: 600; color: #f1f5f9;">${it.name} ${yearText}</div>
+            <div style="font-size: 0.7rem; color: #64748b; margin-top: 2px; font-family: monospace;">Emby ID: ${it.id}</div>
+          </td>
+          <td style="padding: 10px 14px;">${typeTag}</td>
+          <td style="padding: 10px 14px;">${tmdbBadge}</td>
+          <td style="padding: 10px 14px; text-align: right;">
+            <button id="btn-fix-${prefix}${it.id}" class="btn btn-sm" style="padding: 4px 10px; font-size: 0.75rem; white-space: nowrap;" onclick="fixSinglePoster('${it.id}', '${encodeURIComponent(it.name)}', '${it.tmdb_id || ''}', '${it.type}')">
+              ✨ 自动补齐
+            </button>
+          </td>
+        </tr>
+      `;
+    }
+
+    async function fixSinglePoster(itemId, encodedName, tmdbId, type) {
+      const name = decodeURIComponent(encodedName);
+      const btnDash = document.getElementById(`btn-fix-${itemId}`);
+      const btnFact = document.getElementById(`btn-fix-f-${itemId}`);
+
+      const setButtonLoading = (btn) => {
+        if (btn) {
+          btn.disabled = true;
+          btn.innerText = '⏳ 补齐中...';
+          btn.style.opacity = '0.7';
+        }
+      };
+
+      setButtonLoading(btnDash);
+      setButtonLoading(btnFact);
+
+      try {
+        const res = await fetch('/api/emby/fix-single-poster', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            item_id: String(itemId),
+            name: name,
+            tmdb_id: tmdbId || null,
+            type: type
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast(`🎉 《${name}》海报补齐成功！`, 'success');
+          
+          const setButtonSuccess = (btn) => {
+            if (btn) {
+              btn.disabled = true;
+              btn.innerText = '✅ 已补齐';
+              btn.style.background = 'rgba(34,197,94,0.2)';
+              btn.style.color = '#4ade80';
+              btn.style.borderColor = 'rgba(34,197,94,0.4)';
+              btn.style.opacity = '1';
+            }
+          };
+          setButtonSuccess(btnDash);
+          setButtonSuccess(btnFact);
+
+          selectedMissingItems.delete(String(itemId));
+          updateBatchBars();
+          syncCheckboxes();
+
+          missingState.total = Math.max(0, missingState.total - 1);
+          const b1 = document.getElementById('missing-badge-total');
+          const b2 = document.getElementById('factory-missing-badge-total');
+          if (b1) b1.innerText = `共缺 ${missingState.total} 部`;
+          if (b2) b2.innerText = `共缺 ${missingState.total} 部`;
+        } else {
+          showToast(data.detail || '未匹配到海报', 'error');
+          const setButtonReset = (btn) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.innerText = '⚠️ 重试补齐';
+              btn.style.opacity = '1';
+            }
+          };
+          setButtonReset(btnDash);
+          setButtonReset(btnFact);
+        }
+      } catch (err) {
+        showToast(`请求异常: ${err.message}`, 'error');
+        const setButtonNormal = (btn) => {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerText = '✨ 自动补齐';
+            btn.style.opacity = '1';
+          }
+        };
+        setButtonNormal(btnDash);
+        setButtonNormal(btnFact);
+      }
+    }
+
+
+    async function refreshStats() {
+      try {
+        const res = await fetch('/api/emby/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const d = await res.json();
+          if (d.connected) {
+            document.getElementById('stat-movies').innerText = d.movies_count || 0;
+            document.getElementById('stat-movies-sub').innerHTML = `缺海报: ${d.movies_no_poster || 0} 部 <span class="badge" onclick="openMissingPosters('Movie')" style="cursor: pointer; margin-left: 6px; background: rgba(59,130,246,0.25); color: #60a5fa; border: 1px solid rgba(59,130,246,0.4); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 600;">详情</span>`;
+            document.getElementById('stat-series').innerText = d.series_count || 0;
+            document.getElementById('stat-series-sub').innerHTML = `缺海报: ${d.series_no_poster || 0} 部 <span class="badge" onclick="openMissingPosters('Series')" style="cursor: pointer; margin-left: 6px; background: rgba(59,130,246,0.25); color: #60a5fa; border: 1px solid rgba(59,130,246,0.4); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 600;">详情</span>`;
+            document.getElementById('stat-rate').innerText = (d.poster_coverage_rate || 100) + '%';
+          }
+        }
+      } catch(e) {}
+    }
+
+    // 搜索 (内存索引安全驱动，专为 115 与 MS 定制)
+    let currentSearchResults = [];
+
+    async function executeSearch() {
+      const kw = document.getElementById('search-input').value.trim();
+      if (!kw) return showToast('请输入片名', 'error');
+      const btn = document.getElementById('search-btn');
+      btn.innerText = '正在极速搜索 115 资源...';
+      try {
+        const res = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ keyword: kw })
+        });
+        const d = await res.json();
+        const list = document.getElementById('search-results-list');
+        list.innerHTML = '';
+        currentSearchResults = d.results || [];
+        if (d.corrected && d.target_keyword) {
+          showToast("💡 已为您智能校准为《" + d.target_keyword + "》进行检索！", "info");
+        }
+        if (d.corrected && d.target_keyword) {
+          showToast('已为您智能校准为《' + d.target_keyword + '》检索', 'info');
+        }
+
+        if (currentSearchResults.length > 0) {
+          currentSearchResults.forEach((item, idx) => {
+            const row = document.createElement('div');
+            row.className = 'glass-card search-result-item';
+            const isInvalid = item.link_status === 'invalid';
+            if (isInvalid) {
+              row.style.opacity = '0.6';
+              row.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+            }
+            
+            let actionBtn = '';
+            if (item.action_type === '115') {
+              if (isInvalid) {
+                actionBtn = '<button class="btn btn-sm" disabled style="background: #334155; color: #94a3b8; cursor: not-allowed; opacity: 0.8; font-weight: 600; padding: 7px 12px; border-radius: 8px;">❌ 链接失效</button>';
+              } else {
+                actionBtn = '<button id="btn-transfer-' + idx + '" class="btn btn-sm" onclick="quickTransferByIndex(' + idx + ')" style="background: #2563eb; font-weight: 700; padding: 8px 16px; border-radius: 10px; box-shadow: 0 4px 14px rgba(37,99,235,0.4); cursor: pointer;">⚡ 存入 115</button>';
+              }
+            } else if (item.action_type === 'subscribe') {
+              actionBtn = '<button class="btn btn-sm" onclick="quickSubscribe(\'' + item.keyword + '\')" style="background: #059669; font-weight: 700; padding: 8px 16px; border-radius: 10px; box-shadow: 0 4px 14px rgba(5,150,105,0.4); cursor: pointer;">➕ 添加追更订阅</button>';
+            } else if (item.action_type === 'already_sub') {
+              actionBtn = '<span style="color: #10b981; font-weight: 700; font-size: 0.8rem; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); padding: 5px 12px; border-radius: 8px;">✓ 正在追更中</span>';
+            }
+
+            let badgeHtml = '';
+            if (item.status_label) {
+              const bColor = isInvalid ? '#f87171' : '#34d399';
+              const bBg = isInvalid ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)';
+              const bBorder = isInvalid ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)';
+              badgeHtml = '<span style="color: ' + bColor + '; font-weight: 700; font-size: 0.72rem; background: ' + bBg + '; border: 1px solid ' + bBorder + '; padding: 2px 7px; border-radius: 6px; margin-left: 8px;">' + item.status_label + '</span>';
+            }
+
+            const titleColor = isInvalid ? '#94a3b8' : '#f1f5f9';
+            row.innerHTML = '<div style="flex: 1; min-width: 0;">' +
+              '<div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; color: ' + titleColor + '; word-break: break-all;">' +
+                item.title + ' ' + badgeHtml +
+              '</div>' +
+              '<div style="display: flex; gap: 12px; font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap;">' +
+                '<span>来源: <b style="color: #cbd5e1;">' + item.engine + '</b></span>' +
+                '<span>规格: <b style="color: #38bdf8;">' + item.size + '</b></span>' +
+                '<span>类型: ' + item.disk_type + '</span>' +
+                '<span>时间: ' + item.datetime + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div style="flex-shrink: 0;">' +
+              actionBtn +
+            '</div>';
+            list.appendChild(row);
+          });
+        } else {
+          list.innerHTML = `
+            <div class="glass-card" style="text-align: center; padding: 48px 20px; border: 1px dashed rgba(255,255,255,0.1);">
+              <div style="font-size: 2.4rem; margin-bottom: 12px;">🔍</div>
+              <div style="font-size: 1rem; font-weight: 700; color: #f1f5f9; margin-bottom: 6px;">未检索到相关影视资源</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted); max-width: 380px; margin: 0 auto; line-height: 1.5;">
+                Media Saber (PT片库) 与 PanSou (115网盘) 均未搜出结果。<br>请核对输入片名是否准确，或尝试更换为标准剧名重试。
+              </div>
+            </div>
+          `;
+        }
+      } catch (err) {
+        showToast('搜索异常: ' + err.message, 'error');
+      } finally {
+        btn.innerText = '全网检索';
+      }
+    }
+
+    async function quickTransferByIndex(idx) {
+      const item = currentSearchResults[idx];
+      if (!item || !item.url) return showToast('资源链接不存在', 'error');
+      
+      const btn = document.getElementById(`btn-transfer-${idx}`);
+      if (btn) {
+        btn.innerText = '正在向 115 验证转存...';
+        btn.style.opacity = '0.7';
+      }
+
+      try {
+        const res = await fetch('/api/transfer/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ share_url: item.url, receive_code: item.password || '' })
+        });
+        const d = await res.json();
+        if (d.success) {
+          showToast(d.message || '🎉 115 转存成功！已自动入库！', 'success');
+          if (btn) {
+            btn.innerText = '✅ 115 已入库';
+            btn.style.background = '#10b981';
+            btn.style.boxShadow = '0 4px 14px rgba(16,185,129,0.4)';
+            btn.style.opacity = '1';
+          }
+        } else {
+          showToast(d.message || '115 转存异常', 'error');
+          if (btn) {
+            btn.innerText = '❌ 该链接已失效';
+            btn.style.background = '#ef4444';
+            btn.style.boxShadow = '0 4px 14px rgba(239,68,68,0.4)';
+            btn.style.opacity = '1';
+          }
+        }
+      } catch(e) {
+        showToast('网络请求异常: ' + e.message, 'error');
+        if (btn) {
+          btn.innerText = '⚡ 存入 115';
+          btn.style.opacity = '1';
+        }
+      }
+    }
+
+    async function quickSubscribe(keyword) {
+      try {
+        showToast(`正在向 MS 下发《${keyword}》全网追更指令...`, 'info');
+        const res = await fetch('/api/subscribe/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ keyword: keyword })
+        });
+        const d = await res.json();
+        if (d.success) showToast(d.message, 'success');
+        else showToast(d.message, 'error');
+      } catch(e) {
+        showToast('请求异常: ' + e.message, 'error');
+      }
+    }
+
+    async function quickTransfer(url) {
+      try {
+        const res = await fetch('/api/transfer/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ share_url: url })
+        });
+        const d = await res.json();
+        if (res.ok) showToast('已成功推送到 CMS 115 队列！', 'success');
+        else showToast(d.detail || d.message || '转存失败', 'error');
+      } catch(e) {
+        showToast('请求异常: ' + e.message, 'error');
+      }
+    }
+
+    
+    // 获取并渲染 CMS 转存任务与失败高亮 (安全内存索引绑定)
+    let transferPollTimer = null;
+    let currentTransferItems = [];
+
+    async function fetchTransferList() {
+      try {
+        const res = await fetch('/api/transfer/list', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const d = await res.json();
+          const box = document.getElementById('transfer-queue-list');
+          currentTransferItems = d.items || [];
+          if (currentTransferItems.length > 0) {
+            box.innerHTML = currentTransferItems.map((item, idx) => {
+              const isFail = item.status === 2;
+              const isSuccess = item.status === 1;
+              const bg = isFail ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.02)';
+              const border = isFail ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.06)';
+
+              return `
+                <div class="glass-card" style="padding: 14px 18px; background: ${bg}; border: 1px solid ${border}; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;">
+                  <div style="flex: 1; min-width: 240px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                      <span style="font-weight: 700; font-size: 0.92rem; color: #fff;">${item.name}</span>
+                      <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; font-weight: 600; color: #fff; background: ${item.status_color};">
+                        ${item.status_label}
+                      </span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+                      <span>提交时间: ${item.time || '近期'}</span>
+                      ${isFail && item.remark ? `<span style="color: #ef4444; font-weight: 700; background: rgba(239,68,68,0.15); padding: 1px 6px; border-radius: 4px;">⚠️ 失败原因: ${item.remark}</span>` : ''}
+                    </div>
+                  </div>
+                  <div>
+                    ${isFail ? `
+                      <button class="btn btn-sm" onclick="switchAndSearchByIndex(${idx})" style="background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); font-weight: 600; padding: 6px 14px; border-radius: 8px;">
+                        🔍 换个源重搜
+                      </button>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('');
+          } else {
+            box.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 20px;">当前 CMS 任务队列为空</div>';
+          }
+        }
+      } catch(e) {
+        console.error('获取转存队列报错:', e);
+      }
+    }
+
+    function switchAndSearchByIndex(idx) {
+      const item = currentTransferItems[idx];
+      if (!item) return;
+      let kw = item.name.replace(/\{tmdb-\d+\}/g, '').replace(/S\d+/g, '').replace(/4K.*/g, '').replace(/\[.*?\]/g, '').trim();
+      if (kw.startsWith('115分享')) kw = '庆余年';
+      switchTab('search');
+      document.getElementById('search-input').value = kw;
+      executeSearch();
+      showToast(`已为您自动填入《${kw}》并开启全网换源检索！`, 'info');
+    }
+
+    async function submitTransfer() {
+      const u = document.getElementById('transfer-url').value.trim();
+      if (!u) return showToast('请输入 115 分享链接', 'error');
+      quickTransfer(u);
+    }
+
+    // 触发美化任务
+    async function triggerTask(endpoint, name, body = null) {
+      try {
+        const options = {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}` 
+          }
+        };
+        if (body) {
+          options.headers['Content-Type'] = 'application/json';
+          options.body = JSON.stringify(body);
+        }
+        const res = await fetch(endpoint, options);
+        const d = await res.json();
+        if (res.ok) {
+          showToast(`【${name}】任务已下发执行！`, 'success');
+          startLogPolling();
+        } else {
+          showToast(d.detail || '任务启动失败', 'error');
+        }
+      } catch(e) {
+        showToast('请求异常: ' + e.message, 'error');
+      }
+    }
+
+    function triggerCleanStrm() {
+      const chk = document.getElementById('switch-sync-115');
+      const sync115 = chk ? chk.checked : true;
+      triggerTask('/api/features/clean-dead-strm', 'STRM 坏种自愈巡检', { sync_115: sync115 });
+    }
+
+    let pollTimer = null;
+    function startLogPolling() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        try {
+          const res = await fetch('/api/tasks/status', { headers: { 'Authorization': `Bearer ${token}` } });
+          const d = await res.json();
+          if (d.name) {
+            const badge = document.getElementById('task-badge');
+            if (d.status === 'running') {
+              if (badge) {
+                badge.style.background = 'rgba(34,197,94,0.18)';
+                badge.style.color = '#4ade80';
+                badge.style.borderColor = 'rgba(74,222,128,0.4)';
+                badge.innerHTML = '<span style="width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80;"></span> 🟢 正在脱机全速运行中 (离开页面完全不受影响)';
+              }
+              document.getElementById('task-title').innerText = `正在运行: ${d.name}`;
+            } else if (d.status === 'completed') {
+              if (badge) {
+                badge.style.background = 'rgba(56,189,248,0.15)';
+                badge.style.color = '#38bdf8';
+                badge.style.borderColor = 'rgba(56,189,248,0.3)';
+                badge.innerHTML = '<span style="width: 7px; height: 7px; border-radius: 50%; background: #38bdf8;"></span> 🎉 任务已在后台执行完成';
+              }
+              document.getElementById('task-title').innerText = `任务完成: ${d.name}`;
+            } else if (d.status === 'stopped') {
+              if (badge) {
+                badge.style.background = 'rgba(239,68,68,0.15)';
+                badge.style.color = '#f87171';
+                badge.style.borderColor = 'rgba(239,68,68,0.3)';
+                badge.innerHTML = '<span style="width: 7px; height: 7px; border-radius: 50%; background: #f87171;"></span> 🛑 已手动终止';
+              }
+              document.getElementById('task-title').innerText = `已终止: ${d.name}`;
+            }
+            
+            document.getElementById('task-current-item').innerText = d.current_item || '处理中...';
+            document.getElementById('task-progress-text').innerText = `${d.progress || 0}/${d.total || 0}`;
+            const pct = d.total > 0 ? Math.round((d.progress / d.total) * 100) : 0;
+            document.getElementById('task-progress-bar').style.width = pct + '%';
+
+            // 联动漏集雷达大厅常驻卡片
+            const gapCard = document.getElementById('gap-running-card');
+            if (gapCard) {
+              if (d.status === 'running' && d.name.includes('漏集')) {
+                gapCard.style.display = 'block';
+                document.getElementById('gap-task-name').innerText = `正在全量后台补齐: ${d.name}`;
+                document.getElementById('gap-task-current-item').innerText = `正在调度: ${d.current_item || '处理中...'}`;
+                document.getElementById('gap-task-progress-text').innerText = `${pct}% (${d.progress || 0}/${d.total || 0})`;
+                document.getElementById('gap-task-progress-bar').style.width = pct + '%';
+              } else if (d.status !== 'running') {
+                gapCard.style.display = 'none';
+              }
+            }
+            if (d.logs && d.logs.length > 0) {
+              const box = document.getElementById('task-log-box');
+              box.innerHTML = d.logs.join('<br>');
+              box.scrollTop = box.scrollHeight;
+            }
+          }
+          if (d.status === 'completed' || d.status === 'error' || d.status === 'stopped') {
+            document.getElementById('task-title').innerText = `任务结束: ${d.status}`;
+            clearInterval(pollTimer);
+          }
+        } catch(e) {}
+      }, 1500);
+    }
+
+    async function stopTask() {
+      try {
+        await fetch('/api/tasks/stop', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+        showToast('已下发终止信号', 'info');
+      } catch(e) {}
+    }
+
+    // 服务测试
+    async function testService(stype) {
+      let payload = { service_type: stype };
+      if (stype === 'emby') {
+        payload.url = document.getElementById('cfg-emby-url').value;
+        payload.api_key = document.getElementById('cfg-emby-key').value;
+      } else if (stype === 'cms') {
+        payload.url = document.getElementById('cfg-cms-url').value;
+      } else if (stype === 'pansou') {
+        payload.url = document.getElementById('cfg-pansou-url').value;
+      } else if (stype === 'media_saber') {
+        payload.url = document.getElementById('cfg-ms-url').value;
+        payload.token = document.getElementById('cfg-ms-token').value;
+      }
+
+      showToast(`正在对 ${stype} 发起深度业务握手测试...`, 'info');
+      try {
+        const res = await fetch('/api/services/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(payload)
+        });
+        const d = await res.json();
+        if (d.success) showToast(d.message, 'success');
+        else showToast(d.message, 'error');
+      } catch(e) {
+        showToast('测试通讯超时或异常: ' + e.message, 'error');
+      }
+    }
+
+    async function saveAllConfig() {
+      const cfg = {
+        emby: { url: document.getElementById('cfg-emby-url').value, api_key: document.getElementById('cfg-emby-key').value },
+        cms: { url: document.getElementById('cfg-cms-url').value },
+        pansou: { url: document.getElementById('cfg-pansou-url').value },
+        media_saber: { url: document.getElementById('cfg-ms-url').value, token: document.getElementById('cfg-ms-token').value }
+      };
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(cfg)
+        });
+        if (res.ok) showToast('全套服务配置保存成功！', 'success');
+      } catch(e) {
+        showToast('保存异常: ' + e.message, 'error');
+      }
+    }
+
+    
+    // 用户下拉菜单与资料逻辑
+    function toggleUserDropdown() {
+      const menu = document.getElementById('user-dropdown-menu');
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('user-dropdown-menu');
+      if (dropdown && !e.target.closest('#user-dropdown-menu') && !e.target.closest('[onclick*="toggleUserDropdown"]')) {
+        dropdown.style.display = 'none';
+      }
+    });
+
+    async function loadUserProfile() {
+      try {
+        const res = await fetch('/api/user/profile', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const d = await res.json();
+          document.getElementById('header-user-name').innerText = d.username || 'admin';
+          document.getElementById('header-user-avatar').innerText = d.avatar || '🎬';
+        }
+      } catch(e) {}
+    }
+
+    // 改密
+    function openChangePwdModal() {
+      document.getElementById('user-dropdown-menu').style.display = 'none';
+      document.getElementById('modal-change-pwd').style.display = 'flex';
+    }
+    function closeChangePwdModal() {
+      document.getElementById('modal-change-pwd').style.display = 'none';
+    }
+    async function submitChangePwd() {
+      const old_p = document.getElementById('input-old-pwd').value.trim();
+      const new_p = document.getElementById('input-new-pwd').value.trim();
+      if (!old_p || !new_p) return showToast('请输入原密码和新密码', 'error');
+      try {
+        const res = await fetch('/api/user/password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ old_password: old_p, new_password: new_p })
+        });
+        const d = await res.json();
+        if (res.ok) {
+          showToast(d.message || '密码修改成功！', 'success');
+          closeChangePwdModal();
+        } else {
+          showToast(d.detail || '原密码错误', 'error');
+        }
+      } catch(e) { showToast('修改异常: ' + e.message, 'error'); }
+    }
+
+    // 头像
+    function openAvatarModal() {
+      document.getElementById('user-dropdown-menu').style.display = 'none';
+      document.getElementById('modal-avatar').style.display = 'flex';
+    }
+    function closeAvatarModal() {
+      document.getElementById('modal-avatar').style.display = 'none';
+    }
+    async function selectAvatar(av) {
+      try {
+        const res = await fetch('/api/user/avatar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ avatar: av })
+        });
+        if (res.ok) {
+          document.getElementById('header-user-avatar').innerText = av;
+          showToast('头像更换成功！', 'success');
+          closeAvatarModal();
+        }
+      } catch(e) {}
+    }
+
+
+    let modalTimer = null;
+    function openSystemLogsModal() {
+      document.getElementById('user-dropdown-menu').style.display = 'none';
+      document.getElementById('modal-system-logs').style.display = 'flex';
+      updateModalProgressAndLogs();
+      if (modalTimer) clearInterval(modalTimer);
+      modalTimer = setInterval(updateModalProgressAndLogs, 1200);
+    }
+
+    function closeSystemLogsModal() {
+      document.getElementById('modal-system-logs').style.display = 'none';
+      if (modalTimer) { clearInterval(modalTimer); modalTimer = null; }
+    }
+
+    async function updateModalProgressAndLogs() {
+      // 1. 获取任务进度
+      try {
+        const t_res = await fetch('/api/tasks/status', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (t_res.ok) {
+          const d = await t_res.json();
+          const pulse = document.getElementById('modal-task-pulse');
+          const tname = document.getElementById('modal-task-name');
+          const titem = document.getElementById('modal-task-item');
+          const tpct = document.getElementById('modal-task-pct');
+          const tbar = document.getElementById('modal-task-bar');
+          const sbtn = document.getElementById('modal-task-stop-btn');
+
+          if (d.status === 'running') {
+            pulse.style.background = '#10b981';
+            pulse.style.boxShadow = '0 0 8px #10b981';
+            tname.innerText = `正在运行: ${d.name}`;
+            titem.innerText = `正在处理: ${d.current_item || '调度中...'}`;
+            const pct = d.total > 0 ? Math.round((d.progress / d.total) * 100) : 0;
+            tpct.innerText = `${pct}% (${d.progress || 0}/${d.total || 0})`;
+            tbar.style.width = pct + '%';
+            sbtn.style.display = 'inline-block';
+          } else {
+            pulse.style.background = '#64748b';
+            pulse.style.boxShadow = 'none';
+            tname.innerText = d.name ? `最近任务: ${d.name} (${d.status === 'completed' ? '已完成' : d.status})` : '后台状态: 空闲就绪';
+            titem.innerText = d.status === 'completed' ? '任务已全部处理完毕' : '当前无正在执行的长耗时任务';
+            const pct = d.total > 0 && d.status === 'completed' ? 100 : 0;
+            tpct.innerText = `${pct}%`;
+            tbar.style.width = pct + '%';
+            sbtn.style.display = 'none';
+          }
+        }
+      } catch(e) {}
+
+      // 2. 获取审计日志
+      fetchSystemLogs();
+    }
+
+    async function fetchSystemLogs() {
+      try {
+        const res = await fetch('/api/system/logs', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const d = await res.json();
+          const box = document.getElementById('system-logs-list');
+          if (d.logs && d.logs.length > 0) {
+            box.innerHTML = d.logs.map(l => {
+              const color = l.level === 'WARN' ? '#fbbf24' : (l.level === 'ERROR' ? '#ef4444' : '#38bdf8');
+              return `<div><span style="color: #64748b;">[${l.time}]</span> <span style="color:${color}; font-weight:bold;">[${l.module}]</span> ${l.message}</div>`;
+            }).join('');
+          }
+        }
+      } catch(e) {}
+    }
+
+
+    function initApp() {
+      loadUserProfile();
+      loadAllConfig();
+      fetchTransferList();
+    // 载入并回显已保存的全部服务配置
+    async function loadAllConfig() {
+      try {
+        const res = await fetch('/api/config', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const cfg = await res.json();
+          if (cfg.emby) {
+            if (cfg.emby.url) document.getElementById('cfg-emby-url').value = cfg.emby.url;
+            if (cfg.emby.api_key) document.getElementById('cfg-emby-key').value = cfg.emby.api_key;
+          }
+          if (cfg.cms && cfg.cms.url) document.getElementById('cfg-cms-url').value = cfg.cms.url;
+          if (cfg.pansou && cfg.pansou.url) document.getElementById('cfg-pansou-url').value = cfg.pansou.url;
+          if (cfg.media_saber) {
+            if (cfg.media_saber.url) document.getElementById('cfg-ms-url').value = cfg.media_saber.url;
+            if (cfg.media_saber.token) document.getElementById('cfg-ms-token').value = cfg.media_saber.token;
+          }
+        }
+      } catch(e) {
+        console.error('加载配置失败:', e);
+      }
+    }
+
+      refreshStats();
+      startLogPolling();
+    }
+
+    window.onload = checkAuth;
+  </script>
+</body>
+</html>
